@@ -23,7 +23,7 @@ Resources:
       QueueName: BookingQueue
       ReceiveMessageWaitTimeSeconds: 20
       VisibilityTimeout: 5
-      MessageRetentionPeriod: 120
+      MessageRetentionPeriod: !Ref BookingQueueExpiration
   GetRideFunction: 
     Type: AWS::Serverless::Function
     Properties:
