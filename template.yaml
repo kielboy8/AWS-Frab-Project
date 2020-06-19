@@ -9,31 +9,84 @@ Description: >
 Globals:
   Function:
     Timeout: 3
-
+Parameters:
+  BookingQueueExpiration:
+    Type: Number
+    Default: 120 #Expressed in seconds
+  DefaultRegion: 
+    Type: String
+    Default: "ap-southeast-1"
 Resources:
-  HelloWorldFunction:
+  BookingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: BookingQueue
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 5
+      MessageRetentionPeriod: 120
+  GetRideFunction: 
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get_ride/
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Events: 
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /rides/{rideId}
+            Method: get
+      Environment: 
+        Variables:
+            DEFAULT_REGION: !Ref DefaultRegion
+            RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
+  BookRideFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
-      CodeUri: hello_world/
+      CodeUri: rides/
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
-        HelloWorld:
+        FrabApi:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /hello
-            Method: get
-
+            Path: /rides
+            Method: post
+      Policies:
+       - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
+       - SQSSendMessagePolicy:
+            QueueName: !GetAtt BookingQueue.QueueName
+      Environment: 
+        Variables:
+            DEFAULT_REGION: !Ref DefaultRegion
+            BOOKING_QUEUE: !Ref BookingQueue
+            RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+  RidesTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: ride_id  
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: ride_id
+          KeyType: HASH
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
+  FrabApi:
+    Description: "API Gateway endpoint URL for Prod stage for Book Ride function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/rides/"
+  BookRideFunction:
+    Description: "BookRideFunction Lambda Function ARN"
+    Value: !GetAtt BookRideFunction.Arn
+  BookRideFunctionIamRole:
     Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+    Value: !GetAtt BookRideFunctionRole.Arn
