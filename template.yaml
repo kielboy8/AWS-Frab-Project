@@ -27,7 +27,7 @@ Resources:
   GetRideFunction: 
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: get_ride/
+      CodeUri: get_ride_status/
       Handler: app.lambda_handler
       Runtime: python3.6
       Events: 
