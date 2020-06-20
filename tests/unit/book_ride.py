@@ -5,10 +5,11 @@ import requests
 
 value = None
 
-def test_book_ride():
+def book_ride():
     with open('config.json') as json_data:
         data = json.loads(json_data.read())
         json_data.close()
+        
         #Book Ride
         payload = {
             "riderID": "1",
