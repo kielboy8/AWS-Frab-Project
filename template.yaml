@@ -21,6 +21,7 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
+      Cors: "'*'"
       Auth:
         DefaultAuthorizer: LambdaTokenAuthorizerFunction
         Authorizers:
