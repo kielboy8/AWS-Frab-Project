@@ -17,6 +17,32 @@ Parameters:
     Type: String
     Default: "ap-southeast-1"
 Resources:
+  FrabApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: LambdaTokenAuthorizerFunction
+        Authorizers:
+          LambdaTokenAuthorizerFunction:
+            FunctionArn: !GetAtt LambdaTokenAuthorizerFunction.Arn
+          # Identity:
+          #   Header: Authorization
+      GatewayResponses:
+        UNAUTHORIZED:
+          StatusCode: 401
+          ResponseParameters:
+            Headers:
+              Access-Control-Expose-Headers: "'WWW-Authenticate'"
+              Access-Control-Allow-Origin: "'*'"
+              WWW-Authenticate: >-
+                'Authorization'
+  LambdaTokenAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda_authorizer/
+      Handler: app.handler
+      Runtime: nodejs10.x
   GetRidesFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -29,6 +55,7 @@ Resources:
           Properties:
             Path: /drivers/{driverId}/rides/
             Method: get
+            RestApiId: !Ref FrabApi
       Environment: 
         Variables:
             DEFAULT_REGION: !Ref DefaultRegion
@@ -57,6 +84,7 @@ Resources:
           Properties:
             Path: /rides/{rideId}
             Method: get
+            RestApiId: !Ref FrabApi
       Environment: 
         Variables:
             DEFAULT_REGION: !Ref DefaultRegion
@@ -76,10 +104,11 @@ Resources:
           Properties:
             Path: /rides
             Method: post
+            RestApiId: !Ref FrabApi
       Policies:
-       - DynamoDBCrudPolicy:
+      - DynamoDBCrudPolicy:
             TableName: !Ref RidesTable
-       - SQSSendMessagePolicy:
+      - SQSSendMessagePolicy:
             QueueName: !GetAtt BookingQueue.QueueName
       Environment: 
         Variables:
@@ -98,6 +127,7 @@ Resources:
           Properties:
             Path: /drivers/{driverId}/rides/{rideId}
             Method: put
+            RestApiId: !Ref FrabApi
       Environment: 
         Variables:
             DEFAULT_REGION: !Ref DefaultRegion
@@ -120,6 +150,7 @@ Resources:
           Properties:
             Path: /drivers/{driverId}/locations
             Method: put
+            RestApiId: !Ref FrabApi
       Environment:
         Variables:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
@@ -156,7 +187,7 @@ Outputs:
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   FrabApi:
     Description: "API Gateway endpoint URL for Prod stage for Book Ride function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/rides/"
+    Value: !Sub "https://${FrabApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/rides/"
   BookRideFunction:
     Description: "BookRideFunction Lambda Function ARN"
     Value: !GetAtt BookRideFunction.Arn
