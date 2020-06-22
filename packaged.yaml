@@ -16,10 +16,36 @@ Parameters:
     Type: String
     Default: ap-southeast-1
 Resources:
+  FrabApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: LambdaTokenAuthorizerFunction
+        Authorizers:
+          LambdaTokenAuthorizerFunction:
+            FunctionArn:
+              Fn::GetAtt:
+              - LambdaTokenAuthorizerFunction
+              - Arn
+      GatewayResponses:
+        UNAUTHORIZED:
+          StatusCode: 401
+          ResponseParameters:
+            Headers:
+              Access-Control-Expose-Headers: '''WWW-Authenticate'''
+              Access-Control-Allow-Origin: '''*'''
+              WWW-Authenticate: '''Authorization'''
+  LambdaTokenAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://frab-api-artifact/ff5c07e6472701c8cc6a0cb31c17a4eb
+      Handler: app.handler
+      Runtime: nodejs10.x
   GetRidesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://kiel-api-bucket/6af24402116c0b2bd8204a2d3f277f19
+      CodeUri: s3://frab-api-artifact/e67c996c387d40b9a39fc9f4c20cba40
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -28,18 +54,8 @@ Resources:
           Properties:
             Path: /drivers/{driverId}/rides/
             Method: get
-      Environment:
-        Variables:
-          DEFAULT_REGION:
-            Ref: DefaultRegion
-          BOOKING_QUEUE:
-            Ref: BookingQueue
-      Policies:
-      - SQSPollerPolicy:
-          QueueName:
-            Fn::GetAtt:
-            - BookingQueue
-            - QueueName
+            RestApiId:
+              Ref: FrabApi
   BookingQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -53,7 +69,7 @@ Resources:
   GetRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://kiel-api-bucket/20e96b4404664317d764f3f015b1b15a
+      CodeUri: s3://frab-api-artifact/b91a45ba96f1a715efdf9f0106681d73
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -62,26 +78,12 @@ Resources:
           Properties:
             Path: /rides/{rideId}
             Method: get
-      Environment:
-        Variables:
-          DEFAULT_REGION:
-            Ref: DefaultRegion
-          RIDES_TABLE:
-            Fn::Select:
-            - 1
-            - Fn::Split:
-              - /
-              - Fn::GetAtt:
-                - RidesTable
-                - Arn
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: RidesTable
+            RestApiId:
+              Ref: FrabApi
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://kiel-api-bucket/b07cfabf18251075268259a95fa16d30
+      CodeUri: s3://frab-api-artifact/8506bb9cb8a5c13c06a4ab7df583e86f
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -90,6 +92,8 @@ Resources:
           Properties:
             Path: /rides
             Method: post
+            RestApiId:
+              Ref: FrabApi
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -116,7 +120,7 @@ Resources:
   AcceptRideRequestFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://kiel-api-bucket/8d080493bce5d69643e742d7a406518d
+      CodeUri: s3://frab-api-artifact/0f7f09004455d46c878b581cee0c85b8
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -125,37 +129,12 @@ Resources:
           Properties:
             Path: /drivers/{driverId}/rides/{rideId}
             Method: put
-      Environment:
-        Variables:
-          DEFAULT_REGION:
-            Ref: DefaultRegion
-          RIDES_TABLE:
-            Fn::Select:
-            - 1
-            - Fn::Split:
-              - /
-              - Fn::GetAtt:
-                - RidesTable
-                - Arn
-          DRIVERS_TABLE:
-            Fn::Select:
-            - 1
-            - Fn::Split:
-              - /
-              - Fn::GetAtt:
-                - DriversTable
-                - Arn
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: RidesTable
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: DriversTable
+            RestApiId:
+              Ref: FrabApi
   LocationFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://kiel-api-bucket/a4d97e7d3417c506ac61aae5b4b48472
+      CodeUri: s3://frab-api-artifact/6fafb0ce6a02c2eb2bff65cff2da2d4a
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -164,20 +143,8 @@ Resources:
           Properties:
             Path: /drivers/{driverId}/locations
             Method: put
-      Environment:
-        Variables:
-          DRIVERS_TABLE:
-            Fn::Select:
-            - 1
-            - Fn::Split:
-              - /
-              - Fn::GetAtt:
-                - DriversTable
-                - Arn
-      Policies:
-      - DynamoDBWritePolicy:
-          TableName:
-            Ref: DriversTable
+            RestApiId:
+              Ref: FrabApi
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -190,23 +157,11 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
-  DriversTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-      - AttributeName: driver_id
-        AttributeType: S
-      KeySchema:
-      - AttributeName: driver_id
-        KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
 Outputs:
   FrabApi:
     Description: API Gateway endpoint URL for Prod stage for Book Ride function
     Value:
-      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/rides/
+      Fn::Sub: https://${FrabApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/rides/
   BookRideFunction:
     Description: BookRideFunction Lambda Function ARN
     Value:
