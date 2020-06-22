@@ -39,7 +39,7 @@ Resources:
   LambdaTokenAuthorizerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/ff5c07e6472701c8cc6a0cb31c17a4eb
+      CodeUri: s3://frab-api-artifact/cc8ff246447d317b8773fdf49c7b55ac
       Handler: app.handler
       Runtime: nodejs10.x
   GetRidesFunction:
@@ -56,6 +56,18 @@ Resources:
             Method: get
             RestApiId:
               Ref: FrabApi
+      Environment:
+        Variables:
+          DEFAULT_REGION:
+            Ref: DefaultRegion
+          BOOKING_QUEUE:
+            Ref: BookingQueue
+      Policies:
+      - SQSPollerPolicy:
+          QueueName:
+            Fn::GetAtt:
+            - BookingQueue
+            - QueueName
   BookingQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -69,7 +81,7 @@ Resources:
   GetRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/b91a45ba96f1a715efdf9f0106681d73
+      CodeUri: s3://frab-api-artifact/c6587a53ebcb0b699e11115e8a14e1a4
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -80,10 +92,26 @@ Resources:
             Method: get
             RestApiId:
               Ref: FrabApi
+      Environment:
+        Variables:
+          DEFAULT_REGION:
+            Ref: DefaultRegion
+          RIDES_TABLE:
+            Fn::Select:
+            - 1
+            - Fn::Split:
+              - /
+              - Fn::GetAtt:
+                - RidesTable
+                - Arn
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: RidesTable
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/8506bb9cb8a5c13c06a4ab7df583e86f
+      CodeUri: s3://frab-api-artifact/dddf43e5040189e4f17cadca6aada9f8
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -131,6 +159,33 @@ Resources:
             Method: put
             RestApiId:
               Ref: FrabApi
+      Environment:
+        Variables:
+          DEFAULT_REGION:
+            Ref: DefaultRegion
+          RIDES_TABLE:
+            Fn::Select:
+            - 1
+            - Fn::Split:
+              - /
+              - Fn::GetAtt:
+                - RidesTable
+                - Arn
+          DRIVERS_TABLE:
+            Fn::Select:
+            - 1
+            - Fn::Split:
+              - /
+              - Fn::GetAtt:
+                - DriversTable
+                - Arn
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: RidesTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DriversTable
   LocationFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -145,6 +200,20 @@ Resources:
             Method: put
             RestApiId:
               Ref: FrabApi
+      Environment:
+        Variables:
+          DRIVERS_TABLE:
+            Fn::Select:
+            - 1
+            - Fn::Split:
+              - /
+              - Fn::GetAtt:
+                - DriversTable
+                - Arn
+      Policies:
+      - DynamoDBWritePolicy:
+          TableName:
+            Ref: DriversTable
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -153,6 +222,18 @@ Resources:
         AttributeType: S
       KeySchema:
       - AttributeName: ride_id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+  DriversTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: driver_id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: driver_id
         KeyType: HASH
       ProvisionedThroughput:
         ReadCapacityUnits: 5

@@ -24,20 +24,23 @@ def lambda_handler(event, context):
             'ride_id': {
                 'S': body['ride_id']
             },
-            'pickup_point': {
-                'S':  body['pickupPoint']  
+            'booking_location': {
+                'S':  str(body['bookingLocation'])
             },
-            'dropoff_point': {
-                'S': body['dropoffPoint']
+            'target_location': {
+                'S': str(body['targetLocation'])
+            },
+            'driver_id': {
+                'S': ''  
             },
             'rider_id': {
-                'S': body['riderID']
+                'S': body['userId']
             },
             'timestamp': {
                 'S': body['timestamp']
             },
             'ride_status': {
-                'S': 'Booked'
+                'S': 'pending'
             }
         }
     )
@@ -45,9 +48,7 @@ def lambda_handler(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps({
-            # "bookingSuccessful": True if response else False,
             "rideId": body['ride_id'],
-            # "rideStatus": 'Booked'
-            # "message": [body, str(type(body))],
+            "state": "pending"
         }),
     }
