@@ -20,6 +20,7 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
+      Cors: '''*'''
       Auth:
         DefaultAuthorizer: LambdaTokenAuthorizerFunction
         Authorizers:
@@ -45,9 +46,9 @@ Resources:
   GetRidesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/e67c996c387d40b9a39fc9f4c20cba40
+      CodeUri: s3://frab-api-artifact/43d923b9c0563a33685eaaa65445a9f1
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events:
         FrabApi:
           Type: Api
@@ -81,9 +82,9 @@ Resources:
   GetRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/c6587a53ebcb0b699e11115e8a14e1a4
+      CodeUri: s3://frab-api-artifact/c4abe656961cf71586ca875894698796
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events:
         FrabApi:
           Type: Api
@@ -111,9 +112,9 @@ Resources:
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/dddf43e5040189e4f17cadca6aada9f8
+      CodeUri: s3://frab-api-artifact/0fc67f74cbcddf79b436ff9226825a16
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events:
         FrabApi:
           Type: Api
@@ -150,7 +151,7 @@ Resources:
     Properties:
       CodeUri: s3://frab-api-artifact/0f7f09004455d46c878b581cee0c85b8
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events:
         FrabApi:
           Type: Api
@@ -191,7 +192,7 @@ Resources:
     Properties:
       CodeUri: s3://frab-api-artifact/6fafb0ce6a02c2eb2bff65cff2da2d4a
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events:
         Location:
           Type: Api

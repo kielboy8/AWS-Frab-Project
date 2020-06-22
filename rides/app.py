@@ -10,7 +10,7 @@ sqs = boto3.client('sqs', os.environ['DEFAULT_REGION'])
 def lambda_handler(event, context):
     body = json.loads(event['body'])
     body['ride_id'] = uuid.uuid4().hex
-    body['timestamp'] = str(datetime.datetime.now())
+    body['timestamp'] = str(datetime.datetime.now().isoformat())
     
     sqs.send_message(
         QueueUrl=os.environ['BOOKING_QUEUE'],
