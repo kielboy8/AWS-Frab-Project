@@ -19,7 +19,7 @@ Resources:
   GetRidesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact-jeramine/23b57647ef27e4f9c9180415e0464c76
+      CodeUri: s3://kiel-api-bucket/6af24402116c0b2bd8204a2d3f277f19
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -53,7 +53,7 @@ Resources:
   GetRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact-jeramine/f2638d725e34b13b9be5088c3eadf073
+      CodeUri: s3://kiel-api-bucket/20e96b4404664317d764f3f015b1b15a
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -81,7 +81,7 @@ Resources:
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact-jeramine/c90e515e7fd34dd56366fd34439916b1
+      CodeUri: s3://kiel-api-bucket/b07cfabf18251075268259a95fa16d30
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -116,7 +116,7 @@ Resources:
   AcceptRideRequestFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact-jeramine/e6dc4541e83994a4584d376d2d23d51c
+      CodeUri: s3://kiel-api-bucket/8d080493bce5d69643e742d7a406518d
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -150,6 +150,32 @@ Resources:
           TableName:
             Ref: RidesTable
       - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DriversTable
+  LocationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://kiel-api-bucket/a4d97e7d3417c506ac61aae5b4b48472
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Events:
+        Location:
+          Type: Api
+          Properties:
+            Path: /drivers/{driverId}/locations
+            Method: put
+      Environment:
+        Variables:
+          DRIVERS_TABLE:
+            Fn::Select:
+            - 1
+            - Fn::Split:
+              - /
+              - Fn::GetAtt:
+                - DriversTable
+                - Arn
+      Policies:
+      - DynamoDBWritePolicy:
           TableName:
             Ref: DriversTable
   RidesTable:
