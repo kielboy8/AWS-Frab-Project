@@ -17,12 +17,33 @@ Parameters:
     Type: String
     Default: "ap-southeast-1"
 Resources:
+  GetRidesFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: get_ride/
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Events:
+        FrabApi:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /drivers/{driverId}/rides/
+            Method: get
+      Environment: 
+        Variables:
+            DEFAULT_REGION: !Ref DefaultRegion
+            BOOKING_QUEUE: !Ref BookingQueue
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt BookingQueue.QueueName
   BookingQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: BookingQueue
-      ReceiveMessageWaitTimeSeconds: 20
-      VisibilityTimeout: 5
+      ContentBasedDeduplication: true
+      QueueName: BookingQueue.fifo
+      FifoQueue: true
+      ReceiveMessageWaitTimeSeconds: 1
+      VisibilityTimeout: 1
       MessageRetentionPeriod: !Ref BookingQueueExpiration
   GetRideFunction: 
     Type: AWS::Serverless::Function

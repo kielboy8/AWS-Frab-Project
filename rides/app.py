@@ -10,10 +10,12 @@ sqs = boto3.client('sqs', os.environ['DEFAULT_REGION'])
 def lambda_handler(event, context):
     body = json.loads(event['body'])
     body['ride_id'] = uuid.uuid4().hex
-
+    body['timestamp'] = str(datetime.datetime.now())
+    
     sqs.send_message(
         QueueUrl=os.environ['BOOKING_QUEUE'],
         MessageBody=str(body),
+        MessageGroupId=body['ride_id'] #For Fifo
     )
     
     response = dynamodb.put_item(
@@ -32,7 +34,7 @@ def lambda_handler(event, context):
                 'S': body['riderID']
             },
             'timestamp': {
-                'S': str(datetime.datetime.now())
+                'S': body['timestamp']
             },
             'ride_status': {
                 'S': 'Booked'

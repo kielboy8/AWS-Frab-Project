@@ -16,17 +16,44 @@ Parameters:
     Type: String
     Default: ap-southeast-1
 Resources:
+  GetRidesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://frab-api-artifact/43d923b9c0563a33685eaaa65445a9f1
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Events:
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /drivers/{driverId}/rides/
+            Method: get
+      Environment:
+        Variables:
+          DEFAULT_REGION:
+            Ref: DefaultRegion
+          BOOKING_QUEUE:
+            Ref: BookingQueue
+      Policies:
+      - SQSPollerPolicy:
+          QueueName:
+            Fn::GetAtt:
+            - BookingQueue
+            - QueueName
   BookingQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: BookingQueue
-      ReceiveMessageWaitTimeSeconds: 20
-      VisibilityTimeout: 5
-      MessageRetentionPeriod: 120
+      ContentBasedDeduplication: true
+      QueueName: BookingQueue.fifo
+      FifoQueue: true
+      ReceiveMessageWaitTimeSeconds: 1
+      VisibilityTimeout: 1
+      MessageRetentionPeriod:
+        Ref: BookingQueueExpiration
   GetRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/a37e6ba30bfde883a634b8900a0629eb
+      CodeUri: s3://frab-api-artifact/e7260c050bf4c3e33cd90b9607a6eaf4
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -54,7 +81,7 @@ Resources:
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/8ee26b80d5d60aca1d85ca253b5375e0
+      CodeUri: s3://frab-api-artifact/232ed30cb0f5e7b6b61f982e93305cb8
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
