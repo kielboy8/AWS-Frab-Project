@@ -86,6 +86,28 @@ Resources:
             DEFAULT_REGION: !Ref DefaultRegion
             BOOKING_QUEUE: !Ref BookingQueue
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+  AcceptRideRequestFunction: 
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: accept_ride_request/
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Events: 
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /drivers/{driverId}/rides/{rideId}
+            Method: put
+      Environment: 
+        Variables:
+            DEFAULT_REGION: !Ref DefaultRegion
+            RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+            DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DriversTable
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties: 
@@ -98,6 +120,18 @@ Resources:
       ProvisionedThroughput: 
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
+  DriversTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: driver_id  
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: driver_id
+          KeyType: HASH
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5  
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM

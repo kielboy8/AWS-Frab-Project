@@ -19,7 +19,7 @@ Resources:
   GetRidesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/43d923b9c0563a33685eaaa65445a9f1
+      CodeUri: s3://frab-api-artifact-jeramine/23b57647ef27e4f9c9180415e0464c76
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -53,7 +53,7 @@ Resources:
   GetRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/e7260c050bf4c3e33cd90b9607a6eaf4
+      CodeUri: s3://frab-api-artifact-jeramine/f2638d725e34b13b9be5088c3eadf073
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -81,7 +81,7 @@ Resources:
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/232ed30cb0f5e7b6b61f982e93305cb8
+      CodeUri: s3://frab-api-artifact-jeramine/c90e515e7fd34dd56366fd34439916b1
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -113,6 +113,45 @@ Resources:
               - Fn::GetAtt:
                 - RidesTable
                 - Arn
+  AcceptRideRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://frab-api-artifact-jeramine/e6dc4541e83994a4584d376d2d23d51c
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Events:
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /drivers/{driverId}/rides/{rideId}
+            Method: put
+      Environment:
+        Variables:
+          DEFAULT_REGION:
+            Ref: DefaultRegion
+          RIDES_TABLE:
+            Fn::Select:
+            - 1
+            - Fn::Split:
+              - /
+              - Fn::GetAtt:
+                - RidesTable
+                - Arn
+          DRIVERS_TABLE:
+            Fn::Select:
+            - 1
+            - Fn::Split:
+              - /
+              - Fn::GetAtt:
+                - DriversTable
+                - Arn
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: RidesTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DriversTable
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -121,6 +160,18 @@ Resources:
         AttributeType: S
       KeySchema:
       - AttributeName: ride_id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+  DriversTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: driver_id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: driver_id
         KeyType: HASH
       ProvisionedThroughput:
         ReadCapacityUnits: 5
