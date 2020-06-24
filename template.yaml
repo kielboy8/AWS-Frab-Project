@@ -10,13 +10,181 @@ Globals:
   Function:
     Timeout: 3
 Parameters:
-  BookingQueueExpiration:
-    Type: Number
-    Default: 120 #Expressed in seconds
+  # BookingQueueExpiration:
+  #   Type: Number
+  #   Default: 120 #Expressed in seconds
+  VpcName:
+    Type: String
+    Default: "frab-api-vpc"
+  VpcCidrBlock:
+    Type: String
+    Default: "10.100.0.0/16"
+  PrivateSubnet1CIDR:
+    Description: "CIDR block for Private Subnet"
+    Type: String
+    Default: "10.100.0.0/18"
+  PublicSubnet1CIDR:
+    Description: "CIDR block for Public Subnet"
+    Type: String
+    Default: "10.100.64.0/18"
   DefaultRegion: 
     Type: String
     Default: "ap-southeast-1"
+  SearchRadius:
+    Type: Number
+    Default: 2
+  SearchRadiusUnits:
+    Type: String
+    Default: 'km' #'mi', 'km', 'm', 'ft'
+  ResultCount:
+    Type: Number
+    Default: 10
 Resources:
+  #
+  # VPC
+  #
+  mainVPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !Ref "VpcCidrBlock"
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      Tags:
+        -
+          Key: "Name"
+          Value: !Ref VpcName
+  PublicRouteToIGW:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref IGW'
+  PrivateSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      VpcId: !Ref mainVPC
+      Tags:
+        -
+          Key: "Name"
+          Value: !Sub
+            - "${VPC_NAME} Private Subnet 1"
+            - VPC_NAME: !Ref VpcName
+  PublicSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      VpcId: !Ref mainVPC
+      Tags:
+        -
+          Key: "Name"
+          Value: !Sub
+            - "${VPC_NAME} Public Subnet 1"
+            - VPC_NAME: !Ref VpcName
+  ## private subnet 2: 10.100.128.0/18
+  ## public subnet 2: 10.100.192.0/18
+  PrivateRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref mainVPC
+      Tags:
+        -
+          Key: "Name"
+          Value: "frab-api-private-routetable"
+  PublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref mainVPC
+      Tags:
+        -
+          Key: "Name"
+          Value: "frab-api-public-routetable"
+  IGW:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        -
+          Key: "Name"
+          Value: "frab-api-igw"
+  IgwAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    DependsOn:
+      - "IGW"
+    Properties:
+      VpcId: !Ref mainVPC
+      InternetGatewayId: !Ref IGW
+  NatEIP:
+    Type: "AWS::EC2::EIP"
+    Properties:
+      Domain: "vpc"
+      
+  NatGateway:
+    Type: "AWS::EC2::NatGateway"
+    DependsOn:
+      - IGW
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      
+  PrivateRouteToNatGateway:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      RouteTableId: !Ref PrivateRouteTable
+      NatGatewayId: !Ref NatGateway
+
+  PublicRouteToIGW:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref IGW
+  PrivateSubnet1RouteAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+  PublicSubnet1RouteAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+  FunctionSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "frab-api - Lambda Function Security Group"
+      VpcId: !Ref mainVPC
+  #
+  # ElastiCache
+  #
+  ECCluster:
+    Type: "AWS::ElastiCache::CacheCluster"
+    Properties:
+      Engine: "redis"
+      CacheNodeType: "cache.t2.micro"
+      NumCacheNodes: 1
+      VpcSecurityGroupIds:
+        - !GetAtt ECSecurityGroup.GroupId
+      CacheSubnetGroupName: !Ref ECSubnetGroup
+  ECSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "frab-api ElastiCache Security Group"
+      VpcId: !Ref mainVPC
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref FunctionSecurityGroup
+  ECSubnetGroup:
+    Type: "AWS::ElastiCache::SubnetGroup"
+    Properties:
+      Description: "frab-api - ElastiCache Subnet Group"
+      SubnetIds:
+        - !Ref PrivateSubnet1
   FrabApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -44,61 +212,67 @@ Resources:
       CodeUri: lambda_authorizer/
       Handler: app.handler
       Runtime: nodejs10.x
-  GetRidesFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: get_ride/
-      Handler: app.lambda_handler
-      Runtime: python3.6
-      Events:
-        FrabApi:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /drivers/{driverId}/rides/
-            Method: get
-            RestApiId: !Ref FrabApi
-      Environment: 
-        Variables:
-            DEFAULT_REGION: !Ref DefaultRegion
-            BOOKING_QUEUE: !Ref BookingQueue
-      Policies:
-        - SQSPollerPolicy:
-            QueueName: !GetAtt BookingQueue.QueueName
-  BookingQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      ContentBasedDeduplication: true
-      QueueName: BookingQueue.fifo
-      FifoQueue: true
-      ReceiveMessageWaitTimeSeconds: 1
-      VisibilityTimeout: 1
-      MessageRetentionPeriod: !Ref BookingQueueExpiration
-  GetRideFunction: 
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: get_ride_status/
-      Handler: app.lambda_handler
-      Runtime: python3.6
-      Events: 
-        FrabApi:
-          Type: Api
-          Properties:
-            Path: /rides/{rideId}
-            Method: get
-            RestApiId: !Ref FrabApi
-      Environment: 
-        Variables:
-            DEFAULT_REGION: !Ref DefaultRegion
-            RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref RidesTable
+  # GetRidesFunction:
+  #   Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  #   Properties:
+  #     CodeUri: get_ride/
+  #     Handler: app.lambda_handler
+  #     Runtime: python3.7
+  #     Events:
+  #       FrabApi:
+  #         Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+  #         Properties:
+  #           Path: /drivers/{driverId}/rides/
+  #           Method: get
+  #           RestApiId: !Ref FrabApi
+  #     Environment: 
+  #       Variables:
+  #           DEFAULT_REGION: !Ref DefaultRegion
+  #           BOOKING_QUEUE: !Ref BookingQueue
+  #     Policies:
+  #       - SQSPollerPolicy:
+  #           QueueName: !GetAtt BookingQueue.QueueName
+  # BookingQueue:
+  #   Type: AWS::SQS::Queue
+  #   Properties:
+  #     ContentBasedDeduplication: true
+  #     QueueName: BookingQueue.fifo
+  #     FifoQueue: true
+  #     ReceiveMessageWaitTimeSeconds: 1
+  #     VisibilityTimeout: 1
+  #     MessageRetentionPeriod: !Ref BookingQueueExpiration
+  # GetRideFunction: 
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     CodeUri: get_ride_status/
+  #     Handler: app.lambda_handler
+  #     Runtime: python3.7
+  #     Events: 
+  #       FrabApi:
+  #         Type: Api
+  #         Properties:
+  #           Path: /rides/{rideId}
+  #           Method: get
+  #           RestApiId: !Ref FrabApi
+      # Environment: 
+      #   Variables:
+      #       DEFAULT_REGION: !Ref DefaultRegion
+      #       RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+      # Policies:
+      #   - DynamoDBCrudPolicy:
+      #       TableName: !Ref RidesTable
   BookRideFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: rides/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FunctionSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnet1
+      Timeout: 6
       Events:
         FrabApi:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -107,57 +281,63 @@ Resources:
             Method: post
             RestApiId: !Ref FrabApi
       Policies:
-      - DynamoDBCrudPolicy:
-            TableName: !Ref RidesTable
-      - SQSSendMessagePolicy:
-            QueueName: !GetAtt BookingQueue.QueueName
+        - DynamoDBCrudPolicy:
+              TableName: !Ref RidesTable
+        - AWSLambdaVPCAccessExecutionRole
+      # - SQSSendMessagePolicy:
+      #       QueueName: !GetAtt BookingQueue.QueueName
       Environment: 
         Variables:
             DEFAULT_REGION: !Ref DefaultRegion
-            BOOKING_QUEUE: !Ref BookingQueue
+            # BOOKING_QUEUE: !Ref BookingQueue
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-  AcceptRideRequestFunction: 
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: accept_ride_request/
-      Handler: app.lambda_handler
-      Runtime: python3.6
-      Events: 
-        FrabApi:
-          Type: Api
-          Properties:
-            Path: /drivers/{driverId}/rides/{rideId}
-            Method: put
-            RestApiId: !Ref FrabApi
-      Environment: 
-        Variables:
-            DEFAULT_REGION: !Ref DefaultRegion
-            RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-            DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref RidesTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref DriversTable
-  LocationFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: drivers_location/
-      Handler: app.lambda_handler
-      Runtime: python3.6
-      Events:
-        Location:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /drivers/{driverId}/locations
-            Method: put
-            RestApiId: !Ref FrabApi
-      Environment:
-        Variables:
-          DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
-      Policies:
-        - DynamoDBWritePolicy:
-            TableName: !Ref DriversTable
+            ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+            ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+            SEARCH_RADIUS: !Ref SearchRadius
+            SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
+            RESULT_COUNT: !Ref ResultCount
+  # AcceptRideRequestFunction: 
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     CodeUri: accept_ride_request/
+  #     Handler: app.lambda_handler
+  #     Runtime: python3.7
+  #     Events: 
+  #       FrabApi:
+  #         Type: Api
+  #         Properties:
+  #           Path: /drivers/{driverId}/rides/{rideId}
+  #           Method: put
+  #           RestApiId: !Ref FrabApi
+      # Environment: 
+      #   Variables:
+      #       DEFAULT_REGION: !Ref DefaultRegion
+      #       RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+      #       DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+      # Policies:
+      #   - DynamoDBCrudPolicy:
+      #       TableName: !Ref RidesTable
+      #   - DynamoDBCrudPolicy:
+      #       TableName: !Ref DriversTable
+  # LocationFunction:
+  #   Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  #   Properties:
+  #     CodeUri: drivers_location/
+  #     Handler: app.lambda_handler
+  #     Runtime: python3.7
+  #     Events:
+  #       Location:
+  #         Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+  #         Properties:
+  #           Path: /drivers/{driverId}/locations
+  #           Method: put
+  #           RestApiId: !Ref FrabApi
+      # Environment:
+      #   Variables:
+      #     DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+      # Policies:
+      #   - DynamoDBWritePolicy:
+      #       TableName: !Ref DriversTable
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties: 
@@ -170,18 +350,30 @@ Resources:
       ProvisionedThroughput: 
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
-  DriversTable:
-    Type: AWS::DynamoDB::Table
-    Properties: 
-      AttributeDefinitions: 
-        - AttributeName: driver_id  
-          AttributeType: S
-      KeySchema: 
-        - AttributeName: driver_id
-          KeyType: HASH
-      ProvisionedThroughput: 
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5  
+  # LocationsTable:
+  #   Type: AWS::DynamoDB::Table
+  #   Properties:
+  #     AttributeDefinitions:
+  #       - AttributeName: loc_id
+  #         AttributeType: S
+  #     KeySchema:
+  #       - AttributeName: loc_id
+  #         KeyType: HASH
+  #     ProvisionedThroughput:
+  #       ReadCapacityUnits: 5
+  #       WriteCapacityUnits: 5
+  # DriversTable:
+  #   Type: AWS::DynamoDB::Table
+  #   Properties: 
+  #     AttributeDefinitions: 
+  #       - AttributeName: driver_id  
+  #         AttributeType: S
+  #     KeySchema: 
+  #       - AttributeName: driver_id
+  #         KeyType: HASH
+  #     ProvisionedThroughput: 
+  #       ReadCapacityUnits: 5
+  #       WriteCapacityUnits: 5  
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
@@ -195,3 +387,7 @@ Outputs:
   BookRideFunctionIamRole:
     Description: "Implicit IAM Role created for Hello World function"
     Value: !GetAtt BookRideFunctionRole.Arn
+  CacheEndpoint:
+    Description: "ElastiCache Endpoint"
+    Value: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+

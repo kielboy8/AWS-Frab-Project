@@ -3,20 +3,14 @@ import boto3
 import os
 import uuid
 import datetime
+import redis
 
 dynamodb = boto3.client("dynamodb", os.environ['DEFAULT_REGION'])
-sqs = boto3.client('sqs', os.environ['DEFAULT_REGION'])
 
 def lambda_handler(event, context):
     body = json.loads(event['body'])
     body['ride_id'] = uuid.uuid4().hex
-    body['timestamp'] = str(datetime.datetime.now())
-    
-    sqs.send_message(
-        QueueUrl=os.environ['BOOKING_QUEUE'],
-        MessageBody=str(body),
-        MessageGroupId=body['ride_id'] #For Fifo
-    )
+    body['timestamp'] = str(datetime.datetime.now().isoformat())
     
     response = dynamodb.put_item(
         TableName=os.environ['RIDES_TABLE'],
