@@ -6,29 +6,21 @@ import redis
 # import requests
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ['DRIVERS_TABLE'])
+table = dynamodb.Table(os.environ['RIDERS_TABLE'])
 redis_endpoint = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], db=0)
 
 def lambda_handler(event, context):
     params = event.get('pathParameters')
-    driverId = params.get('driverId')
-    requestBody = json.loads(event.get('body'))
+    riderId = params.get('riderId')
     
-    driverLocId = table.get_item(
+    riderLocId = table.get_item(
         Key={
-            'driver_id': driverId
+            'rider_id': riderId
         },
         ProjectionExpression='location_id'
     )
     
-    redis_endpoint.geoadd(
-        'drivers', 
-        requestBody['updatedLocation']['N'], 
-        requestBody['updatedLocation']['W'], 
-        driverLocId['Item']['location_id']
-    )
-    
-    result = redis_endpoint.geopos('drivers', driverLocId['Item']['location_id'])
+    result = redis_endpoint.geopos('riders', riderLocId['Item']['location_id'])
     
     redis_result_body = {
         'N': result[0][0],
@@ -38,8 +30,8 @@ def lambda_handler(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "locationId": driverLocId['Item']['location_id'],
-            "updatedLocation": redis_result_body
+            "locationId": riderLocId['Item']['location_id'],
+            "currentLocation": redis_result_body
             # "location": ip.text.replace("\n", "")
         }),
     }
