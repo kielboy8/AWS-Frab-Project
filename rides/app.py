@@ -51,11 +51,13 @@ def lambda_handler(event, context):
                 float(bookingLocation['W']), 
                 float(bookingLocation['N']), 
                 body['ride_id']) #Lon, Lat
-                
-            r.geoadd('ridesTargetLoc', 
-                float(targetLocation['W']), 
-                float(targetLocation['N']), 
-            body['ride_id']) #Lon, Lat
+            
+            r.hmset('bookingHash:'+body['ride_id'], 
+                {   'state':'pending', 
+                    'rideId': body['ride_id'], 
+                    'driverId': ''
+                }
+            )
             
             response = {
                     "rideId": body['ride_id'],
