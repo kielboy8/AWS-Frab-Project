@@ -49,7 +49,7 @@ Resources:
     Properties:
       CodeUri: get_ride/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events:
         FrabApi:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -78,7 +78,7 @@ Resources:
     Properties:
       CodeUri: get_ride_status/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events: 
         FrabApi:
           Type: Api
@@ -98,7 +98,7 @@ Resources:
     Properties:
       CodeUri: rides/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events:
         FrabApi:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -121,7 +121,7 @@ Resources:
     Properties:
       CodeUri: accept_ride_request/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events: 
         FrabApi:
           Type: Api
@@ -144,7 +144,7 @@ Resources:
     Properties:
       CodeUri: drivers_location/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Events:
         Location:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api

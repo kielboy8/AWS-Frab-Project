@@ -25,7 +25,8 @@ def lambda_handler(event, context):
         
         if result['Items'][0] and len(result['Items']) > 0:
             datenow = dt.datetime.now()
-            timestamp_obj = dt.datetime.strptime(result['Items'][0]['timestamp'], '%Y-%m-%d %H:%M:%S.%f')
+            # timestamp_obj = dt.datetime.strptime(result['Items'][0]['timestamp'], '%Y-%m-%d %H:%M:%S.%f')
+            timestamp_obj = dt.datetime.fromisoformat(result['Items'][0]['timestamp'])
             if timestamp_obj + dt.timedelta(seconds=120) < datenow and result['Items'][0]['ride_status'] == 'pending':
                 response = 'pending_failure' # driver not found
             else:
