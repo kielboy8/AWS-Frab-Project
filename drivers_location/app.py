@@ -40,25 +40,26 @@ def lambda_handler(event, context):
 
     params = event.get('pathParameters')
     driverId = params.get('driverId')
-
-    faker = Faker()
-    latitude = faker.latitude()
-    longitude = faker.longitude()
+    requestBody = json.loads(event.get('body'))
 
     response = table.put_item(
         Item={
             'driver_id': driverId,
-            'latitude': latitude,
-            'longitutde': longitude
+            'latitude': requestBody['updatedLocation']['N'],
+            'longitude': requestBody['updatedLocation']['W']
         }
     )
+    
+    responseBody = {
+        'N': requestBody['updatedLocation']['N'],
+        'W': requestBody['updatedLocation']['W']
+    }
 
     return {
         "statusCode": 200,
         "body": json.dumps({
             "driverId": driverId,
-            "latitude": str(latitude),
-            "longitude": str(longitude)
+            "updatedLocation": responseBody,
             # "location": ip.text.replace("\n", "")
         }),
     }

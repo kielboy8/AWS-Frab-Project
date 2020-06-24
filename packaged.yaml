@@ -20,6 +20,7 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
+      Cors: '''*'''
       Auth:
         DefaultAuthorizer: LambdaTokenAuthorizerFunction
         Authorizers:
@@ -39,13 +40,13 @@ Resources:
   LambdaTokenAuthorizerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/cc8ff246447d317b8773fdf49c7b55ac
+      CodeUri: s3://kiel-api-bucket-2/2f5c001064c724e0d421096d3fecb29b
       Handler: app.handler
       Runtime: nodejs10.x
   GetRidesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/e67c996c387d40b9a39fc9f4c20cba40
+      CodeUri: s3://kiel-api-bucket-2/47e44fb7a6af38cb41a96be146b0bc2f
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -81,7 +82,7 @@ Resources:
   GetRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/c6587a53ebcb0b699e11115e8a14e1a4
+      CodeUri: s3://kiel-api-bucket-2/9de8a71dad53ab4bf1d481a13dbaae3a
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -111,7 +112,7 @@ Resources:
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/dddf43e5040189e4f17cadca6aada9f8
+      CodeUri: s3://kiel-api-bucket-2/f4c724844d1ad205f72c178da9d103fc
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -148,7 +149,7 @@ Resources:
   AcceptRideRequestFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/0f7f09004455d46c878b581cee0c85b8
+      CodeUri: s3://kiel-api-bucket-2/8d080493bce5d69643e742d7a406518d
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
@@ -189,7 +190,7 @@ Resources:
   LocationFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/6fafb0ce6a02c2eb2bff65cff2da2d4a
+      CodeUri: s3://kiel-api-bucket-2/dd411ada9ac2c62903b9bd74a23f3140
       Handler: app.lambda_handler
       Runtime: python3.6
       Events:
