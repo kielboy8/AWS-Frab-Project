@@ -245,10 +245,12 @@ Resources:
   #     Environment: 
   #       Variables:
   #           DEFAULT_REGION: !Ref DefaultRegion
-  #           BOOKING_QUEUE: !Ref BookingQueue
+  #           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+  #           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+  #           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
   #     Policies:
-  #       - SQSPollerPolicy:
-  #           QueueName: !GetAtt BookingQueue.QueueName
+  #       - DynamoDBCrudPolicy:
+  #           TableName: !Ref RidesTable
   # BookingQueue:
   #   Type: AWS::SQS::Queue
   #   Properties:
@@ -258,26 +260,34 @@ Resources:
   #     ReceiveMessageWaitTimeSeconds: 1
   #     VisibilityTimeout: 1
   #     MessageRetentionPeriod: !Ref BookingQueueExpiration
-  # GetRideFunction: 
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     CodeUri: get_ride_status/
-  #     Handler: app.lambda_handler
-  #     Runtime: python3.7
-  #     Events: 
-  #       FrabApi:
-  #         Type: Api
-  #         Properties:
-  #           Path: /rides/{rideId}
-  #           Method: get
-  #           RestApiId: !Ref FrabApi
-      # Environment: 
-      #   Variables:
-      #       DEFAULT_REGION: !Ref DefaultRegion
-      #       RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-      # Policies:
-      #   - DynamoDBCrudPolicy:
-      #       TableName: !Ref RidesTable
+  GetRideStatusFunction: 
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get_ride_status/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FunctionSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnet1
+      Events: 
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /rides/{rideId}
+            Method: get
+            RestApiId: !Ref FrabApi
+      Environment: 
+        Variables:
+          DEFAULT_REGION: !Ref DefaultRegion
+          RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
   BookRideFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -298,7 +308,7 @@ Resources:
             Method: post
             RestApiId: !Ref FrabApi
       Policies:
-        # - AWSLambdaVPCAccessExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
               TableName: !Ref RidesTable
       # - SQSSendMessagePolicy:
