@@ -13,6 +13,12 @@ Parameters:
   # BookingQueueExpiration:
   #   Type: Number
   #   Default: 120 #Expressed in seconds
+  RidesAcceptableCount:
+    Type: Number
+    Default: 10
+  RedisRidesTTL:
+    Type: Number
+    Default: 1800 #Seconds
   VpcName:
     Type: String
     Default: "frab-api-vpc"
@@ -229,37 +235,35 @@ Resources:
       CodeUri: lambda_authorizer/
       Handler: app.handler
       Runtime: nodejs10.x
-  # GetRidesFunction:
-  #   Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-  #   Properties:
-  #     CodeUri: get_ride/
-  #     Handler: app.lambda_handler
-  #     Runtime: python3.7
-  #     Events:
-  #       FrabApi:
-  #         Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-  #         Properties:
-  #           Path: /drivers/{driverId}/rides/
-  #           Method: get
-  #           RestApiId: !Ref FrabApi
-  #     Environment: 
-  #       Variables:
-  #           DEFAULT_REGION: !Ref DefaultRegion
-  #           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-  #           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-  #           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-  #     Policies:
-  #       - DynamoDBCrudPolicy:
-  #           TableName: !Ref RidesTable
-  # BookingQueue:
-  #   Type: AWS::SQS::Queue
-  #   Properties:
-  #     ContentBasedDeduplication: true
-  #     QueueName: BookingQueue.fifo
-  #     FifoQueue: true
-  #     ReceiveMessageWaitTimeSeconds: 1
-  #     VisibilityTimeout: 1
-  #     MessageRetentionPeriod: !Ref BookingQueueExpiration
+  GetAcceptableRidesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get_acceptable_rides/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FunctionSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnet1
+      Events:
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /drivers/{driverId}/rides/acceptable
+            Method: get
+            RestApiId: !Ref FrabApi
+      Environment: 
+        Variables:
+          DEFAULT_REGION: !Ref DefaultRegion
+          RIDE_ACCEPTABLE_COUNT: !Ref RidesAcceptableCount
+          RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
   GetRideStatusFunction: 
     Type: AWS::Serverless::Function
     Properties:
@@ -316,7 +320,7 @@ Resources:
       Environment: 
         Variables:
             DEFAULT_REGION: !Ref DefaultRegion
-            # BOOKING_QUEUE: !Ref BookingQueue
+            RIDES_TTL: !Ref RedisRidesTTL
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
             ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
             ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
