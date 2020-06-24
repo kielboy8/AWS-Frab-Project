@@ -1,6 +1,7 @@
 import json
 import boto3
 import os
+import datetime
 
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key #, Attr
@@ -14,8 +15,18 @@ table = client.Table(os.environ["RIDES_TABLE"])
 table2 = client.Table(os.environ["DRIVERS_TABLE"])
 
 def lambda_handler(event, context):
-    driverId = event.get('driverId')
-    rideId = event.get('rideId')
+    params = event.get("pathParameters")
+    rideId = params.get('rideId')
+    driverId = params.get('driverId')
+    request = json.loads(event.get('body'))
+    
+    acceptLocation = {
+        'N': request['acceptLocation']['N'],
+        'W': request['acceptLocation']['W']
+    }
+    
+    dateNow=datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+    createAt=str(dateNow.isoformat())
     
     update_ride_table=table.update_item(
         Key={
@@ -23,31 +34,20 @@ def lambda_handler(event, context):
         },
         ExpressionAttributeNames={
             '#RS': 'ride_status',
+            '#TS': 'timestamp',
         },
         ExpressionAttributeValues={
-            ':s': 'Found a driver',
+            ':s': 'Accepted',
+            ':ts': createAt,
         },
-        UpdateExpression="set #RS=:s",
-    )
-    
-    update_driver_table=table2.update_item(
-        Key={
-            'driver_id': driverId
-        },
-        ExpressionAttributeNames={
-            '#DS': 'driver_status',
-        },
-        ExpressionAttributeValues={
-            ':s': 'Booked to a ride',
-        },
-        UpdateExpression="set #DS=:s",
+        UpdateExpression="set #RS=:s, #TS=:ts",
     )
     
     return {
         "statusCode": 200,
         "body": json.dumps({
             "rideId": rideId,
-            "driverId": driverId,
-            "rideStatus": 'Found a driver',
+            "acceptLocation": acceptLocation,
+            "createAt": createAt,
         }),
     }

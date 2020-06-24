@@ -96,7 +96,7 @@ Resources:
         FrabApi:
           Type: Api
           Properties:
-            Path: /drivers/{driverId}/rides/{rideId}
+            Path: /drivers/{driverId}/rides/{rideId}/accept
             Method: put
       Environment: 
         Variables:
@@ -108,6 +108,25 @@ Resources:
             TableName: !Ref RidesTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DriversTable
+  GetRiderLocationFunction: 
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get_rider_location/
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Events: 
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /riders/{riderId}
+            Method: get
+      Environment: 
+        Variables:
+            DEFAULT_REGION: !Ref DefaultRegion
+            RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties: 
