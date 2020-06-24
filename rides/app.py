@@ -53,7 +53,8 @@ def lambda_handler(event, context):
                 body['ride_id']) #Lon, Lat
             
             r.hmset('bookingHash:'+body['ride_id'], 
-                {   'state':'pending', 
+                {
+                    'state':'pending', 
                     'rideId': body['ride_id'], 
                     'driverId': ''
                 }
