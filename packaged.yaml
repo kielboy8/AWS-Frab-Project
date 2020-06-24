@@ -18,11 +18,11 @@ Parameters:
   PrivateSubnet1CIDR:
     Description: CIDR block for Private Subnet
     Type: String
-    Default: 10.100.0.0/18
+    Default: 10.100.0.0/24
   PublicSubnet1CIDR:
     Description: CIDR block for Public Subnet
     Type: String
-    Default: 10.100.64.0/18
+    Default: 10.100.64.0/24
   DefaultRegion:
     Type: String
     Default: ap-southeast-1
@@ -219,91 +219,15 @@ Resources:
   LambdaTokenAuthorizerFunction:
     Type: AWS::Serverless::Function
     Properties:
-<<<<<<< HEAD
       CodeUri: s3://kiel-api-bucket-2/2f5c001064c724e0d421096d3fecb29b
       Handler: app.handler
       Runtime: nodejs10.x
-  GetRidesFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: s3://kiel-api-bucket-2/47e44fb7a6af38cb41a96be146b0bc2f
-      Handler: app.lambda_handler
-      Runtime: python3.6
-      Events:
-        FrabApi:
-          Type: Api
-          Properties:
-            Path: /drivers/{driverId}/rides/
-            Method: get
-            RestApiId:
-              Ref: FrabApi
-      Environment:
-        Variables:
-          DEFAULT_REGION:
-            Ref: DefaultRegion
-          BOOKING_QUEUE:
-            Ref: BookingQueue
-      Policies:
-      - SQSPollerPolicy:
-          QueueName:
-            Fn::GetAtt:
-            - BookingQueue
-            - QueueName
-  BookingQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      ContentBasedDeduplication: true
-      QueueName: BookingQueue.fifo
-      FifoQueue: true
-      ReceiveMessageWaitTimeSeconds: 1
-      VisibilityTimeout: 1
-      MessageRetentionPeriod:
-        Ref: BookingQueueExpiration
-  GetRideFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: s3://kiel-api-bucket-2/9de8a71dad53ab4bf1d481a13dbaae3a
-      Handler: app.lambda_handler
-      Runtime: python3.6
-      Events:
-        FrabApi:
-          Type: Api
-          Properties:
-            Path: /rides/{rideId}
-            Method: get
-            RestApiId:
-              Ref: FrabApi
-      Environment:
-        Variables:
-          DEFAULT_REGION:
-            Ref: DefaultRegion
-          RIDES_TABLE:
-            Fn::Select:
-            - 1
-            - Fn::Split:
-              - /
-              - Fn::GetAtt:
-                - RidesTable
-                - Arn
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: RidesTable
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://kiel-api-bucket-2/f4c724844d1ad205f72c178da9d103fc
-=======
-      CodeUri: s3://frab-api-artifact/2f5c001064c724e0d421096d3fecb29b
-      Handler: app.handler
-      Runtime: nodejs10.x
-  BookRideFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: s3://frab-api-artifact/1a37576ad532f8bdd03bbf57c9c852d6
->>>>>>> 1142ad6004255e2b38925f1f2006a18bc399adb9
+      CodeUri: s3://kiel-api-bucket-2/7dd10f6d053ea7a95954ad01ea8e9845
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
         - Ref: FunctionSecurityGroup
@@ -335,60 +259,32 @@ Resources:
               - Fn::GetAtt:
                 - RidesTable
                 - Arn
-<<<<<<< HEAD
-  AcceptRideRequestFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: s3://kiel-api-bucket-2/8d080493bce5d69643e742d7a406518d
-      Handler: app.lambda_handler
-      Runtime: python3.6
-      Events:
-        FrabApi:
-          Type: Api
-          Properties:
-            Path: /drivers/{driverId}/rides/{rideId}
-            Method: put
-            RestApiId:
-              Ref: FrabApi
-      Environment:
-        Variables:
-          DEFAULT_REGION:
-            Ref: DefaultRegion
-          RIDES_TABLE:
-            Fn::Select:
-            - 1
-            - Fn::Split:
-              - /
-              - Fn::GetAtt:
-                - RidesTable
-                - Arn
-          DRIVERS_TABLE:
-            Fn::Select:
-            - 1
-            - Fn::Split:
-              - /
-              - Fn::GetAtt:
-                - DriversTable
-                - Arn
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: RidesTable
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: DriversTable
+          ELASTICACHE_HOST:
+            Fn::GetAtt:
+            - ECCluster
+            - RedisEndpoint.Address
+          ELASTICACHE_PORT:
+            Fn::GetAtt:
+            - ECCluster
+            - RedisEndpoint.Port
   LocationFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://kiel-api-bucket-2/dd411ada9ac2c62903b9bd74a23f3140
+      CodeUri: s3://kiel-api-bucket-2/7d99e716f3f56b56708a835f88fe1038
       Handler: app.lambda_handler
       Runtime: python3.6
+      Timeout: 6
+      VpcConfig:
+        SecurityGroupIds:
+        - Ref: FunctionSecurityGroup
+        SubnetIds:
+        - Ref: PublicSubnet1
       Events:
         Location:
           Type: Api
           Properties:
             Path: /drivers/{driverId}/locations
-            Method: put
+            Method: any
             RestApiId:
               Ref: FrabApi
       Environment:
@@ -401,11 +297,6 @@ Resources:
               - Fn::GetAtt:
                 - DriversTable
                 - Arn
-      Policies:
-      - DynamoDBWritePolicy:
-          TableName:
-            Ref: DriversTable
-=======
           ELASTICACHE_HOST:
             Fn::GetAtt:
             - ECCluster
@@ -420,7 +311,11 @@ Resources:
             Ref: SearchRadiusUnits
           RESULT_COUNT:
             Ref: ResultCount
->>>>>>> 1142ad6004255e2b38925f1f2006a18bc399adb9
+      Policies:
+      - DynamoDBWritePolicy:
+          TableName:
+            Ref: DriversTable
+      - AWSLambdaVPCAccessExecutionRole
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -429,6 +324,18 @@ Resources:
         AttributeType: S
       KeySchema:
       - AttributeName: ride_id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+  DriversTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: driver_id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: driver_id
         KeyType: HASH
       ProvisionedThroughput:
         ReadCapacityUnits: 5
