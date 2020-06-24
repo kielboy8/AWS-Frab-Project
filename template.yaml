@@ -53,12 +53,12 @@ Resources:
         -
           Key: "Name"
           Value: !Ref VpcName
-  PublicRouteToIGW:
-    Type: "AWS::EC2::Route"
-    Properties:
-      DestinationCidrBlock: "0.0.0.0/0"
-      RouteTableId: !Ref PublicRouteTable
-      GatewayId: !Ref IGW'
+  # PublicRouteToIGW:
+  #   Type: "AWS::EC2::Route"
+  #   Properties:
+  #     DestinationCidrBlock: "0.0.0.0/0"
+  #     RouteTableId: !Ref PublicRouteTable
+  #     # GatewayId: !Ref IGW
   PrivateSubnet1:
     Type: "AWS::EC2::Subnet"
     Properties:
@@ -101,46 +101,46 @@ Resources:
         -
           Key: "Name"
           Value: "frab-api-public-routetable"
-  IGW:
-    Type: "AWS::EC2::InternetGateway"
-    Properties:
-      Tags:
-        -
-          Key: "Name"
-          Value: "frab-api-igw"
-  IgwAttachment:
-    Type: "AWS::EC2::VPCGatewayAttachment"
-    DependsOn:
-      - "IGW"
-    Properties:
-      VpcId: !Ref mainVPC
-      InternetGatewayId: !Ref IGW
-  NatEIP:
-    Type: "AWS::EC2::EIP"
-    Properties:
-      Domain: "vpc"
+  # IGW:
+  #   Type: "AWS::EC2::InternetGateway"
+  #   Properties:
+  #     Tags:
+  #       -
+  #         Key: "Name"
+  #         Value: "frab-api-igw"
+  # IgwAttachment:
+  #   Type: "AWS::EC2::VPCGatewayAttachment"
+  #   DependsOn:
+  #     - "IGW"
+  #   Properties:
+  #     VpcId: !Ref mainVPC
+  #     InternetGatewayId: !Ref IGW
+  # NatEIP:
+  #   Type: "AWS::EC2::EIP"
+  #   Properties:
+  #     Domain: "vpc"
       
-  NatGateway:
-    Type: "AWS::EC2::NatGateway"
-    DependsOn:
-      - IGW
-    Properties:
-      AllocationId: !GetAtt NatEIP.AllocationId
-      SubnetId: !Ref PublicSubnet1
+  # NatGateway:
+  #   Type: "AWS::EC2::NatGateway"
+  #   DependsOn:
+  #     - IGW
+  #   Properties:
+  #     AllocationId: !GetAtt NatEIP.AllocationId
+  #     SubnetId: !Ref PublicSubnet1
       
-  PrivateRouteToNatGateway:
-    Type: "AWS::EC2::Route"
-    Properties:
-      DestinationCidrBlock: "0.0.0.0/0"
-      RouteTableId: !Ref PrivateRouteTable
-      NatGatewayId: !Ref NatGateway
+  # PrivateRouteToNatGateway:
+  #   Type: "AWS::EC2::Route"
+  #   Properties:
+  #     DestinationCidrBlock: "0.0.0.0/0"
+  #     RouteTableId: !Ref PrivateRouteTable
+  #     NatGatewayId: !Ref NatGateway
 
-  PublicRouteToIGW:
-    Type: "AWS::EC2::Route"
-    Properties:
-      DestinationCidrBlock: "0.0.0.0/0"
-      RouteTableId: !Ref PublicRouteTable
-      GatewayId: !Ref IGW
+  # PublicRouteToIGW:
+  #   Type: "AWS::EC2::Route"
+  #   Properties:
+  #     DestinationCidrBlock: "0.0.0.0/0"
+  #     RouteTableId: !Ref PublicRouteTable
+  #     GatewayId: !Ref IGW
   PrivateSubnet1RouteAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
