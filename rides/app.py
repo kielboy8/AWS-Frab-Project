@@ -46,7 +46,7 @@ def lambda_handler(event, context):
                     }
                 }
             )
-            #insert booking locations to redis
+            
             r.geoadd('ridesBookLoc', 
                 float(bookingLocation['W']), 
                 float(bookingLocation['N']), 
@@ -59,6 +59,8 @@ def lambda_handler(event, context):
                     'driverId': ''
                 }
             )
+            
+            r.expire('bookingHash:'+body['ride_id'], os.environ['RIDES_TTL'])
             
             response = {
                     "rideId": body['ride_id'],
