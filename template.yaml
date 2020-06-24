@@ -185,6 +185,23 @@ Resources:
       Description: "frab-api - ElastiCache Subnet Group"
       SubnetIds:
         - !Ref PrivateSubnet1
+  Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument: '{
+       "Version":"2012-10-17",
+       "Statement": [
+        {
+            "Action": "*",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Principal": "*"
+        }
+      ]}'
+      RouteTableIds:
+        - !Ref PublicRouteTable
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.dynamodb
+      VpcId: !Ref mainVPC
   FrabApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -272,7 +289,7 @@ Resources:
           - !Ref FunctionSecurityGroup
         SubnetIds:
           - !Ref PublicSubnet1
-      Timeout: 6
+      # Timeout: 6
       Events:
         FrabApi:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -281,9 +298,9 @@ Resources:
             Method: post
             RestApiId: !Ref FrabApi
       Policies:
+        # - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
               TableName: !Ref RidesTable
-        - AWSLambdaVPCAccessExecutionRole
       # - SQSSendMessagePolicy:
       #       QueueName: !GetAtt BookingQueue.QueueName
       Environment: 
@@ -293,9 +310,9 @@ Resources:
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
             ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
             ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-            SEARCH_RADIUS: !Ref SearchRadius
-            SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
-            RESULT_COUNT: !Ref ResultCount
+            # SEARCH_RADIUS: !Ref SearchRadius
+            # SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
+            # RESULT_COUNT: !Ref ResultCount
   # AcceptRideRequestFunction: 
   #   Type: AWS::Serverless::Function
   #   Properties:

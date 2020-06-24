@@ -126,25 +126,12 @@ Resources:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    DependsOn:
-    - IGW
-    Properties:
-      AllocationId:
-        Fn::GetAtt:
-        - NatEIP
-        - AllocationId
-      SubnetId:
-        Ref: PublicSubnet1
   PrivateRouteToNatGateway:
     Type: AWS::EC2::Route
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       RouteTableId:
         Ref: PrivateRouteTable
-      NatGatewayId:
-        Ref: NatGateway
   PrivateSubnet1RouteAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -195,6 +182,17 @@ Resources:
       Description: frab-api - ElastiCache Subnet Group
       SubnetIds:
       - Ref: PrivateSubnet1
+  Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument: '{ "Version":"2012-10-17", "Statement": [ { "Action": "*", "Effect":
+        "Allow", "Resource": "*", "Principal": "*" } ]}'
+      RouteTableIds:
+      - Ref: PublicRouteTable
+      ServiceName:
+        Fn::Sub: com.amazonaws.${AWS::Region}.dynamodb
+      VpcId:
+        Ref: mainVPC
   FrabApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -225,7 +223,7 @@ Resources:
   BookRideFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://frab-api-artifact/1a37576ad532f8bdd03bbf57c9c852d6
+      CodeUri: s3://frab-api-artifact/81825f15eddc3ee64c8a2b6ff0ccdd34
       Handler: app.lambda_handler
       Runtime: python3.7
       VpcConfig:
@@ -233,7 +231,6 @@ Resources:
         - Ref: FunctionSecurityGroup
         SubnetIds:
         - Ref: PublicSubnet1
-      Timeout: 6
       Events:
         FrabApi:
           Type: Api
@@ -246,7 +243,6 @@ Resources:
       - DynamoDBCrudPolicy:
           TableName:
             Ref: RidesTable
-      - AWSLambdaVPCAccessExecutionRole
       Environment:
         Variables:
           DEFAULT_REGION:
@@ -267,12 +263,6 @@ Resources:
             Fn::GetAtt:
             - ECCluster
             - RedisEndpoint.Port
-          SEARCH_RADIUS:
-            Ref: SearchRadius
-          SEARCH_RADIUS_UNITS:
-            Ref: SearchRadiusUnits
-          RESULT_COUNT:
-            Ref: ResultCount
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties:
