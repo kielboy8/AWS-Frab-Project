@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   frab-api
 
-  Sample SAM Template for frab-api
+  SAM Template for frab-api
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -13,12 +13,9 @@ Parameters:
   # BookingQueueExpiration:
   #   Type: Number
   #   Default: 120 #Expressed in seconds
-  RidesAcceptableCount:
-    Type: Number
-    Default: 10
-  RedisRidesTTL:
-    Type: Number
-    Default: 1800 #Seconds
+  RedisAZMode:
+    Type: String
+    Default: "single-az" #cross-az
   VpcName:
     Type: String
     Default: "frab-api-vpc"
@@ -36,15 +33,18 @@ Parameters:
   DefaultRegion: 
     Type: String
     Default: "ap-southeast-1"
-  SearchRadius:
+  SearchRadiusValue:
     Type: Number
     Default: 2
   SearchRadiusUnits:
     Type: String
     Default: 'km' #'mi', 'km', 'm', 'ft'
-  ResultCount:
+  RidesAcceptableCount:
     Type: Number
     Default: 10
+  RedisRidesTTL:
+    Type: Number
+    Default: 1800 #Seconds
 Resources:
   #
   # VPC
@@ -168,6 +168,7 @@ Resources:
   ECCluster:
     Type: "AWS::ElastiCache::CacheCluster"
     Properties:
+      AZMode: !Ref RedisAZMode
       Engine: "redis"
       CacheNodeType: "cache.t2.micro"
       NumCacheNodes: 1
@@ -208,16 +209,22 @@ Resources:
         - !Ref PublicRouteTable
       ServiceName: !Sub com.amazonaws.${AWS::Region}.dynamodb
       VpcId: !Ref mainVPC
+  TokenAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda_authorizer/
+      Handler: app.handler
+      Runtime: nodejs10.x
   FrabApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
       Cors: "'*'"
       Auth:
-        DefaultAuthorizer: LambdaTokenAuthorizerFunction
+        DefaultAuthorizer: TokenAuthorizerFunction
         Authorizers:
-          LambdaTokenAuthorizerFunction:
-            FunctionArn: !GetAtt LambdaTokenAuthorizerFunction.Arn
+          TokenAuthorizerFunction:
+            FunctionArn: !GetAtt TokenAuthorizerFunction.Arn
           # Identity:
           #   Header: Authorization
       GatewayResponses:
@@ -229,12 +236,6 @@ Resources:
               Access-Control-Allow-Origin: "'*'"
               WWW-Authenticate: >-
                 'Authorization'
-  LambdaTokenAuthorizerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: lambda_authorizer/
-      Handler: app.handler
-      Runtime: nodejs10.x
   GetAcceptableRidesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -256,14 +257,16 @@ Resources:
       Environment: 
         Variables:
           DEFAULT_REGION: !Ref DefaultRegion
-          RIDE_ACCEPTABLE_COUNT: !Ref RidesAcceptableCount
-          RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+          DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          RIDE_ACCEPTABLE_COUNT: !Ref RidesAcceptableCount
+          SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
+          SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
-            TableName: !Ref RidesTable
+            TableName: !Ref DriversTable
   GetRideStatusFunction: 
     Type: AWS::Serverless::Function
     Properties:
@@ -324,9 +327,6 @@ Resources:
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
             ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
             ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-            SEARCH_RADIUS: !Ref SearchRadius
-            SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
-            RESULT_COUNT: !Ref ResultCount
   # AcceptRideRequestFunction: 
   #   Type: AWS::Serverless::Function
   #   Properties:
@@ -374,9 +374,6 @@ Resources:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-          SEARCH_RADIUS: !Ref SearchRadius
-          SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
-          RESULT_COUNT: !Ref ResultCount
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref DriversTable
@@ -405,9 +402,6 @@ Resources:
           RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-          SEARCH_RADIUS: !Ref SearchRadius
-          SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
-          RESULT_COUNT: !Ref ResultCount
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref RidersTable
@@ -436,9 +430,6 @@ Resources:
           RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-          SEARCH_RADIUS: !Ref SearchRadius
-          SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
-          RESULT_COUNT: !Ref ResultCount
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref RidersTable
@@ -513,6 +504,3 @@ Outputs:
   RidesTable:
     Description: "RidesTable Table Name"
     Value: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-  RidersTable:
-    Description: "RidersTable Table Name"
-    Value: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
