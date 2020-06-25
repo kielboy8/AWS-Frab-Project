@@ -28,7 +28,7 @@ def lambda_handler(event, context):
         if rideRec:
             rideRec =  { key.decode(): val.decode() for key, val in rideRec.items() }
             response = {
-                'state': rideRec['state'], 
+                'state': rideRec['state'],
                 'rideId': rideRec['ride_id'], 
                 'driverId': rideRec['driver_id']
             }
