@@ -15,7 +15,7 @@ Parameters:
   #   Default: 120 #Expressed in seconds
   RedisAZMode:
     Type: String
-    Default: "single-az" #cross-az
+    Default: "single-az" #"cross-az" for Multi-AZ Setup
   VpcName:
     Type: String
     Default: "frab-api-vpc"
@@ -35,7 +35,7 @@ Parameters:
     Default: "ap-southeast-1"
   SearchRadiusValue:
     Type: Number
-    Default: 2
+    Default: 3
   SearchRadiusUnits:
     Type: String
     Default: 'km' #'mi', 'km', 'm', 'ft'
