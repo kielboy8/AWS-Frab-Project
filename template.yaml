@@ -10,9 +10,6 @@ Globals:
   Function:
     Timeout: 3
 Parameters:
-  # BookingQueueExpiration:
-  #   Type: Number
-  #   Default: 120 #Expressed in seconds
   RedisAZMode:
     Type: String
     Default: "single-az" #"cross-az" for Multi-AZ Setup
@@ -260,7 +257,7 @@ Resources:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-          RIDE_ACCEPTABLE_COUNT: !Ref RidesAcceptableCount
+          RIDES_ACCEPTABLE_COUNT: !Ref RidesAcceptableCount
           SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
           SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
       Policies:
@@ -291,6 +288,7 @@ Resources:
           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          RIDES_TTL: !Ref RedisRidesTTL
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
