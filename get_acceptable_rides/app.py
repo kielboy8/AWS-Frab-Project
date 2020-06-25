@@ -14,7 +14,8 @@ client = boto3.resource(
 )
 
 table = client.Table(os.environ["DRIVERS_TABLE"])
-r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], db=0)
+r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
+    charset='utf-8', decode_responses=True, db=0)
 
 def lambda_handler(event, context):
     response = []
@@ -45,7 +46,7 @@ def lambda_handler(event, context):
                 }
             
         acceptable_rides = r.georadius('ridesGeoPending', 
-                result['W'], result['N'],  #W, N
+                result['N'], result['W'],  #W, N
                 os.environ['SEARCH_RADIUS_VALUE'], 
                 unit=os.environ['SEARCH_RADIUS_UNIT'], 
                 withdist=True, 
@@ -54,14 +55,14 @@ def lambda_handler(event, context):
                 count=os.environ['RIDES_ACCEPTABLE_COUNT'], 
                 sort='ASC'
             )
-            
+                  
         response = [{
             'ride_id': ride[0],
             'currentLocation': {
                 'N': ride[2][1],
                 'W': ride[2][0]
             },
-            'distance': ride[1] + 'km.'
+            'distance': str(ride[1]) + 'km.'
         } for ride in acceptable_rides]
     else:
         response = { 'message': 'No driverId Provided.' }

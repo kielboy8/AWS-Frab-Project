@@ -6,7 +6,8 @@ import datetime
 import redis
 
 dynamodb = boto3.client("dynamodb", os.environ['DEFAULT_REGION'])
-r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], db=0)
+r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
+            charset='utf-8', decode_responses=True, db=0)
 
 
 def lambda_handler(event, context):
@@ -66,11 +67,7 @@ def lambda_handler(event, context):
                     "rideId": body['ride_id'],
                     "state": "pending"
             }
-    #     else:
-    #         pass
-    # else:
-    #     pass
-    
+            
     return {
         "statusCode": 200,
         "body": json.dumps(response),
