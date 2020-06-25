@@ -47,12 +47,12 @@ def lambda_handler(event, context):
                 }
             )
             
-            r.geoadd('ridesBookLoc', 
+            r.geoadd('ridesGeoPending', 
                 float(bookingLocation['W']), 
                 float(bookingLocation['N']), 
                 body['ride_id']) #Lon, Lat
             
-            r.hmset('bookingHash:'+body['ride_id'], 
+            r.hmset('bookings:'+body['ride_id'], 
                 {
                     'state':'pending', 
                     'rideId': body['ride_id'], 
@@ -60,16 +60,16 @@ def lambda_handler(event, context):
                 }
             )
             
-            r.expire('bookingHash:'+body['ride_id'], os.environ['RIDES_TTL'])
+            # r.expire('bookingHash:'+body['ride_id'], os.environ['RIDES_TTL'])
             
             response = {
                     "rideId": body['ride_id'],
                     "state": "pending"
             }
-        else:
-            pass
-    else:
-        pass
+    #     else:
+    #         pass
+    # else:
+    #     pass
     
     return {
         "statusCode": 200,
