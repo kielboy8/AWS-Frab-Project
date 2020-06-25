@@ -26,10 +26,14 @@ def lambda_handler(event, context):
         #check if record exists in the cache
         rideRec = r.hgetall('bookingHash:'+rideId)
         if rideRec:
-            response =  { key.decode(): val.decode() for key, val in rideRec.items() }
+            rideRec =  { key.decode(): val.decode() for key, val in rideRec.items() }
+            response = {
+                'state': rideRec['state'], 
+                'rideId': rideRec['ride_id'], 
+                'driverId': rideRec['driver_id']
+            }
         else:
             #look at the dynamodb
-        
             result = table.query(
                 KeyConditionExpression=Key('ride_id').eq(rideId)
             )
@@ -47,6 +51,7 @@ def lambda_handler(event, context):
                         'state': item['ride_status'],
                         'driverId': item['driver_id']
                     }
+                    r.hmset('bookings:'+item['ride_id'], item)
             else:
                 response = 'Ride Not Found.'
     else:
