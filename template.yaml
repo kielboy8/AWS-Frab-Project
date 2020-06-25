@@ -240,7 +240,7 @@ Resources:
     Properties:
       CodeUri: get_acceptable_rides/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -269,7 +269,7 @@ Resources:
     Properties:
       CodeUri: get_ride_status/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -378,7 +378,7 @@ Resources:
           SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
           RESULT_COUNT: !Ref ResultCount
       Policies:
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref DriversTable
         - AWSLambdaVPCAccessExecutionRole
   UpdateRidersLocationFunction:
@@ -409,7 +409,7 @@ Resources:
           SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
           RESULT_COUNT: !Ref ResultCount
       Policies:
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref RidersTable
         - AWSLambdaVPCAccessExecutionRole
   GetRiderLocationFunction:
