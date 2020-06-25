@@ -28,11 +28,11 @@ Parameters:
   PrivateSubnet1CIDR:
     Description: "CIDR block for Private Subnet"
     Type: String
-    Default: "10.100.0.0/18"
+    Default: "10.100.0.0/24"
   PublicSubnet1CIDR:
     Description: "CIDR block for Public Subnet"
     Type: String
-    Default: "10.100.64.0/18"
+    Default: "10.100.64.0/24"
   DefaultRegion: 
     Type: String
     Default: "ap-southeast-1"
@@ -297,7 +297,7 @@ Resources:
     Properties:
       CodeUri: book_ride/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -324,9 +324,9 @@ Resources:
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
             ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
             ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-            # SEARCH_RADIUS: !Ref SearchRadius
-            # SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
-            # RESULT_COUNT: !Ref ResultCount
+            SEARCH_RADIUS: !Ref SearchRadius
+            SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
+            RESULT_COUNT: !Ref ResultCount
   # AcceptRideRequestFunction: 
   #   Type: AWS::Serverless::Function
   #   Properties:
@@ -340,35 +340,109 @@ Resources:
   #           Path: /drivers/{driverId}/rides/{rideId}
   #           Method: put
   #           RestApiId: !Ref FrabApi
-      # Environment: 
-      #   Variables:
-      #       DEFAULT_REGION: !Ref DefaultRegion
-      #       RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-      #       DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
-      # Policies:
-      #   - DynamoDBCrudPolicy:
-      #       TableName: !Ref RidesTable
-      #   - DynamoDBCrudPolicy:
-      #       TableName: !Ref DriversTable
-  # LocationFunction:
-  #   Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-  #   Properties:
-  #     CodeUri: drivers_location/
-  #     Handler: app.lambda_handler
-  #     Runtime: python3.7
-  #     Events:
-  #       Location:
-  #         Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-  #         Properties:
-  #           Path: /drivers/{driverId}/locations
-  #           Method: put
-  #           RestApiId: !Ref FrabApi
-      # Environment:
-      #   Variables:
-      #     DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
-      # Policies:
-      #   - DynamoDBWritePolicy:
-      #       TableName: !Ref DriversTable
+  #     Environment: 
+  #       Variables:
+  #           DEFAULT_REGION: !Ref DefaultRegion
+  #           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+  #           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+  #     Policies:
+  #       - DynamoDBCrudPolicy:
+  #           TableName: !Ref RidesTable
+  #       - DynamoDBCrudPolicy:
+  #           TableName: !Ref DriversTable
+  UpdateDriversLocationFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: drivers_location/
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Timeout: 6
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FunctionSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnet1
+      Events:
+        Location:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /drivers/{driverId}/locations
+            Method: put
+            RestApiId: !Ref FrabApi
+      Environment:
+        Variables:
+          DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          SEARCH_RADIUS: !Ref SearchRadius
+          SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
+          RESULT_COUNT: !Ref ResultCount
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DriversTable
+        - AWSLambdaVPCAccessExecutionRole
+  UpdateRidersLocationFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: update_riders_location/
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Timeout: 6
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FunctionSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnet1
+      Events:
+        Location:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /riders/{riderId}/locations
+            Method: put
+            RestApiId: !Ref FrabApi
+      Environment:
+        Variables:
+          RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
+          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          SEARCH_RADIUS: !Ref SearchRadius
+          SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
+          RESULT_COUNT: !Ref ResultCount
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref RidersTable
+        - AWSLambdaVPCAccessExecutionRole
+  GetRiderLocationFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: get_riders_location/
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      Timeout: 6
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FunctionSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnet1
+      Events:
+        Location:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /riders/{riderId}
+            Method: get
+            RestApiId: !Ref FrabApi
+      Environment:
+        Variables:
+          RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
+          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          SEARCH_RADIUS: !Ref SearchRadius
+          SEARCH_RADIUS_UNITS: !Ref SearchRadiusUnits
+          RESULT_COUNT: !Ref ResultCount
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref RidersTable
+        - AWSLambdaVPCAccessExecutionRole
   RidesTable:
     Type: AWS::DynamoDB::Table
     Properties: 
@@ -393,18 +467,30 @@ Resources:
   #     ProvisionedThroughput:
   #       ReadCapacityUnits: 5
   #       WriteCapacityUnits: 5
-  # DriversTable:
-  #   Type: AWS::DynamoDB::Table
-  #   Properties: 
-  #     AttributeDefinitions: 
-  #       - AttributeName: driver_id  
-  #         AttributeType: S
-  #     KeySchema: 
-  #       - AttributeName: driver_id
-  #         KeyType: HASH
-  #     ProvisionedThroughput: 
-  #       ReadCapacityUnits: 5
-  #       WriteCapacityUnits: 5  
+  RidersTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: rider_id  
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: rider_id
+          KeyType: HASH
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+  DriversTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: driver_id  
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: driver_id
+          KeyType: HASH
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5  
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
@@ -421,4 +507,12 @@ Outputs:
   CacheEndpoint:
     Description: "ElastiCache Endpoint"
     Value: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-
+  DriversTable:
+    Description: "DriversTable Table Name"
+    Value: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+  RidesTable:
+    Description: "RidesTable Table Name"
+    Value: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+  RidersTable:
+    Description: "RidersTable Table Name"
+    Value: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
