@@ -241,7 +241,7 @@ Resources:
     Properties:
       CodeUri: get_acceptable_rides/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -272,7 +272,7 @@ Resources:
     Properties:
       CodeUri: get_ride_status/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -375,7 +375,7 @@ Resources:
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref DriversTable
         - AWSLambdaVPCAccessExecutionRole
   UpdateRidersLocationFunction:
@@ -403,7 +403,7 @@ Resources:
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref RidersTable
         - AWSLambdaVPCAccessExecutionRole
   GetRiderLocationFunction:

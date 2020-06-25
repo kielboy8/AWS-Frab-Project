@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 import redis
+from uuid import uuid4
 
 # import requests
 
@@ -14,21 +15,32 @@ def lambda_handler(event, context):
     riderId = params.get('riderId')
     requestBody = json.loads(event.get('body'))
     
-    riderLocId = table.get_item(
-        Key={
-            'rider_id': riderId
-        },
-        ProjectionExpression='location_id'
-    )
+    riderLocId = None
+    
+    try:
+        riderLocId = table.get_item(
+            Key={
+                'rider_id': riderId
+            },
+            ProjectionExpression='location_id'
+        )['Item']['location_id']
+    except:
+        riderLocId = str(uuid4())
+        response = table.put_item(
+            Item={
+                'rider_id': riderId,
+                'location_id': riderLocId 
+            }
+        )
     
     redis_endpoint.geoadd(
         'riders', 
         requestBody['updatedLocation']['N'], 
         requestBody['updatedLocation']['W'], 
-        riderLocId['Item']['location_id']
+        riderLocId
     )
     
-    result = redis_endpoint.geopos('riders', riderLocId['Item']['location_id'])
+    result = redis_endpoint.geopos('riders', riderLocId)
     
     redis_result_body = {
         'N': result[0][0],
@@ -38,7 +50,7 @@ def lambda_handler(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "locationId": riderLocId['Item']['location_id'],
+            "locationId": riderLocId,
             "updatedLocation": redis_result_body
             # "location": ip.text.replace("\n", "")
         }),
