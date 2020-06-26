@@ -65,7 +65,7 @@ def lambda_handler(event, context):
                     'N': ride[2][1],
                     'W': ride[2][0]
                 },
-                'distance': str(ride[1]) + 'km.'
+                'distance': str(ride[1]) + f" {os.environ['SEARCH_RADIUS_UNIT']}."
             } for ride in acceptable_rides]
     else:
         response = { 'message': 'No driverId Provided.' }
