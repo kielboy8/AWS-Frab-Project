@@ -14,7 +14,6 @@ client = boto3.resource(
 
 r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
             charset='utf-8', decode_responses=True, db=0)
-#r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], db=0)
 table = client.Table(os.environ["RIDES_TABLE"])
 
 def lambda_handler(event, context):
@@ -22,9 +21,7 @@ def lambda_handler(event, context):
     driverId = params.get('driverId')
     rideId = params.get('rideId')
     
-    #body = json.loads(event['body'])
     body = json.loads(event.get('body'))
-    #request = json.loads(body['acceptLocation'])
     
     acceptLocation = {
         'N': body['acceptLocation']['N'],
@@ -50,35 +47,28 @@ def lambda_handler(event, context):
             UpdateExpression="set #RS=:s, #DI=:di, #TS=:ts",
         )
         
+        record = r.hgetall('bookingHash:'+rideId)
+        print(record)
+        
         response = {
             "rideId": rideId,
             "acceptLocation": acceptLocation,
             "createAt": dateNow
         }
-<<<<<<< HEAD
-        # print(str(r))
-        # print(r.get('ridesGeoPending'))
-        #     # r.geoadd('ridesGeoPending', 
-        #     #     float(bookingLocation['W']), 
-        #     #     float(bookingLocation['N']), 
-        #     #     body['ride_id']) #Lon, Lat        
         
-        #r.get('ridesGeoPending')
-        
-=======
-
->>>>>>> 620245dcee079cb465e7c98bd57ae54f8ae984c0
-        r.zrem('ridesGeoPending', rideId)
-        r.hset('bookings': rideId,
-            {
-                'state':'accepted', 
-                'driverId': driverId
-            }
-        )
-        
-        
+        # r.hmset('bookings:'+item['ride_id'], item)
+        # r.hmset('bookingHash:'+rideId, 
+        #     {
+        #         'state':'accepted', 
+        #         'rideId': rideId, 
+        #         'driverId': driverId
+        #     }
+        # )
+        # r.zrem('ridesGeoPending:', rideId)
+        # r.hset('riderBooking:'+record['userId'], rideId)   
+        # r.hset('driverBooking:'+driverId, rideId )
     # else:
-    #     response  = ("Invalid")
+    #     response = { 'Error':'Ride not found!' }
         
     return {
         "statusCode": 200,

@@ -238,7 +238,7 @@ Resources:
     Properties:
       CodeUri: get_acceptable_rides/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -269,7 +269,7 @@ Resources:
     Properties:
       CodeUri: get_ride_status/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -298,7 +298,7 @@ Resources:
   #   Properties:
   #     CodeUri: distance_driver_rider/
   #     Handler: app.lambda_handler
-  #     Runtime: python3.7
+  #     Runtime: python3.6
   #     VpcConfig:
   #       SecurityGroupIds:
   #         - !Ref FunctionSecurityGroup
@@ -326,7 +326,7 @@ Resources:
     Properties:
       CodeUri: book_ride/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -383,7 +383,7 @@ Resources:
     Properties:
       CodeUri: drivers_location/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       Timeout: 6
       VpcConfig:
         SecurityGroupIds:
@@ -413,7 +413,7 @@ Resources:
     Properties:
       CodeUri: update_riders_location/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       Timeout: 6
       VpcConfig:
         SecurityGroupIds:
@@ -443,7 +443,7 @@ Resources:
     Properties:
       CodeUri: get_riders_location/
       Handler: app.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.6
       Timeout: 6
       VpcConfig:
         SecurityGroupIds:
