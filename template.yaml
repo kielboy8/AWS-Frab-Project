@@ -238,7 +238,7 @@ Resources:
     Properties:
       CodeUri: get_acceptable_rides/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -269,7 +269,7 @@ Resources:
     Properties:
       CodeUri: get_ride_status/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -293,12 +293,39 @@ Resources:
         - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
             TableName: !Ref RidesTable
+  # DistanceDriverRiderFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     CodeUri: distance_driver_rider/
+  #     Handler: app.lambda_handler
+  #     Runtime: python3.7
+  #     VpcConfig:
+  #       SecurityGroupIds:
+  #         - !Ref FunctionSecurityGroup
+  #       SubnetIds:
+  #         - !Ref PublicSubnet1
+  #     Events:
+  #       FrabApi:
+  #         Type: Api
+  #         Properties:
+  #           Path: /drivers/{driverId}/distance
+  #           Method: put
+  #           RestApiId: !Ref FrabApi
+  #     Environment:
+  #       Variables:
+  #         DEFAULT_REGION: !Ref DefaultRegion
+  #         ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+  #         ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+  #         SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
+  #         SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
+  #     Policies:
+  #       - AWSLambdaVPCAccessExecutionRole
   BookRideFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: book_ride/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       VpcConfig:
         SecurityGroupIds:
           - !Ref FunctionSecurityGroup
@@ -353,7 +380,7 @@ Resources:
     Properties:
       CodeUri: drivers_location/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Timeout: 6
       VpcConfig:
         SecurityGroupIds:
@@ -381,7 +408,7 @@ Resources:
     Properties:
       CodeUri: update_riders_location/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Timeout: 6
       VpcConfig:
         SecurityGroupIds:
@@ -409,7 +436,7 @@ Resources:
     Properties:
       CodeUri: get_riders_location/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.7
       Timeout: 6
       VpcConfig:
         SecurityGroupIds:

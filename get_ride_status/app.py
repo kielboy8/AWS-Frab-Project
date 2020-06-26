@@ -45,7 +45,7 @@ def lambda_handler(event, context):
                 timestamp_obj = dateutil.parser.isoparse(item['timestamp'])
                 if timestamp_obj + dt.timedelta(seconds=int(os.environ['RIDES_TTL'])) < datenow \
                     and item['ride_status'] == 'pending' and item['driver_id'] == '':
-                    response = { 
+                    response = {
                         'rideId': rideId,
                         'state': 'pending_failure',
                         'driverId': item['driver_id']
