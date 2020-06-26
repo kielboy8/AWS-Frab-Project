@@ -10,7 +10,7 @@ exports.handler = function (event, context, callback) {
   let password = plainCreds[1]
   console.log('username', username)
   console.log('password', password)
-  if (!(username === 'admin' && password === 'secret')) return callback('Unauthorized')
+  if (!(username === 'some-api-token' && password === '')) return callback('Unauthorized')
 
   var authResponse = buildAllowAllPolicy(event, username)
 

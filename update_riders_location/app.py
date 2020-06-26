@@ -37,21 +37,13 @@ def lambda_handler(event, context):
         'riders', 
         requestBody['updatedLocation']['N'], 
         requestBody['updatedLocation']['W'], 
-        riderLocId
+        riderId
     )
-    
-    result = redis_endpoint.geopos('riders', riderLocId)
-    
-    redis_result_body = {
-        'N': result[0][0],
-        'W': result[0][1]
-    }
 
     return {
         "statusCode": 200,
         "body": json.dumps({
             "locationId": riderLocId,
-            "updatedLocation": redis_result_body
-            # "location": ip.text.replace("\n", "")
+            "updatedLocation": requestBody['updatedLocation']
         }),
     }
