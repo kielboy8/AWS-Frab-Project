@@ -27,7 +27,6 @@ def lambda_handler(event, context):
     if rideId:
         #check if record exists in the cache
         rideRec = r.hgetall('bookingHash:'+rideId)
-        print('rideRec: ', rideRec)
         if rideRec:
             response = {
                 'state': rideRec['state'],
