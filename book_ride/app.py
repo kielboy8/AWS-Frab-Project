@@ -25,7 +25,7 @@ def lambda_handler(event, context):
     body['timestamp'] = str(datetime.datetime.now().isoformat())
     response = {'message':'Invalid Input.'}
     
-    if body.get('bookingLocation') and body.get('targetLocation'):
+    if body.get('bookingLocation') and body.get('targetLocation') and body.get('riderId'):
         bookingLocation = body['bookingLocation']
         targetLocation = body['targetLocation']
         if validate_coord(bookingLocation) and validate_coord(targetLocation):
@@ -34,7 +34,7 @@ def lambda_handler(event, context):
                 currentRide = r.hgetall('bookingHash:'+currentRideId)
                 if currentRide and (json.loads(currentRide['bookingLocation']) == bookingLocation) and \
                     (json.loads(currentRide['targetLocation']) == targetLocation):
-                        response = {'message':'Identical Booking Exists.'}
+                        response = {'message':'You already booked for this destination.'}
             
             if response['message'] != 'Identical Booking Exists.':
                 dynamodb.put_item(
