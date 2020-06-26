@@ -24,7 +24,7 @@ def lambda_handler(event, context):
     
     if driverId:
         #Fetch Last Location on ElastiCache
-        result = r.geopos('driversGeo', driverId)
+        result = r.geopos('driversRidersGeo', driverId)
         
         if len(result) > 0 and result[0] is not None:
             result = {

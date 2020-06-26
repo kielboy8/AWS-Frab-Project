@@ -2,45 +2,70 @@ import json
 import boto3
 import os
 import redis
-
-# import requests
+from uuid import uuid4
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ['RIDERS_TABLE'])
-redis_endpoint = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], db=0)
+ridersTbl = dynamodb.Table(os.environ['DRIVERS_TABLE'])
+ridesTbl = dynamodb.Table(os.environ['RIDES_TABLE'])
+r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
+     charset='utf-8', decode_responses=True, db=0)
 
 def lambda_handler(event, context):
     params = event.get('pathParameters')
     riderId = params.get('riderId')
+    requestBody = json.loads(event.get('body'))
+    
+    driverLocId = str(uuid4().hex)
     
     try:
-        riderLocId = table.get_item(
+        driverLocId = ridersTbl.get_item(
             Key={
                 'rider_id': riderId
             },
             ProjectionExpression='location_id'
-        )
-        
-        result = redis_endpoint.geopos('riders', riderLocId['Item']['location_id'])
-        
-        redis_result_body = {
-            'N': result[0][0],
-            'W': result[0][1]
-        }
-        return {
-            "statusCode": 200,
-            "body": json.dumps({
-                "riderId": riderId,
-                "locationId": riderLocId['Item']['location_id'],
-                "currentLocation": redis_result_body
-                # "location": ip.text.replace("\n", "")
-            }),
-        }
+        )['Item']['location_id']
     except:
-        return {
-            "statusCode": 404,
-            "body": json.dumps({
-                "message": "ID does not exist."
-                # "location": ip.text.replace("\n", "")
-            }),
-        }
+        response = ridersTbl.put_item(
+            Item={
+                'rider_id': riderId,
+                'location_id': driverLocId 
+            }
+        )
+    
+    r.geoadd(
+        'driversRidersGeo', 
+        requestBody['updatedLocation']['N'], 
+        requestBody['updatedLocation']['W'], 
+        riderId
+    )
+    
+    #Check if has current ride in cache
+    currentRideId = r.get('driverBooking:'+riderId)
+    
+    if currentRideId: 
+        currentRide = r.hgetall('bookingHash:'+currentRideId)
+        willExpire = False
+        if json.loads(currentRide['targetLocation']) == requestBody['updatedLocation']:
+            if currentRide['state'] == 'in_progress':
+                currentRide['state'] = 'complete_success'
+            
+            ridesTbl.update_item(
+                Key={
+                    'ride_id': currentRideId
+                },
+                UpdateExpression="set ride_status = :r",
+                ExpressionAttributeValues={
+                    ':r': currentRide['state'],
+                },
+            )
+            
+            r.hmset('bookingHash:'+currentRideId, currentRide)
+            willExpire and r.expire('bookingHash:'+currentRideId, 120)
+        
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "locationId": driverLocId,
+            "updatedLocation": requestBody['updatedLocation']
+        }),
+    }

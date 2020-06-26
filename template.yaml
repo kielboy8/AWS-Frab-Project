@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   frab-api
 
-  SAM Template for frab-api
+  SAM for frab-api
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -314,6 +314,7 @@ Resources:
   #     Environment:
   #       Variables:
   #         DEFAULT_REGION: !Ref DefaultRegion
+  #         SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
   #         ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
   #         ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
   #         SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
@@ -400,6 +401,7 @@ Resources:
         Variables:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+          RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:
@@ -428,6 +430,8 @@ Resources:
       Environment:
         Variables:
           RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
+          RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+          DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:

@@ -26,7 +26,6 @@ def lambda_handler(event, context):
                 currentRide = r.hgetall('bookingHash:'+currentRideId)
                 if currentRide and (json.loads(currentRide['bookingLocation']) == bookingLocation) and \
                     (json.loads(currentRide['targetLocation']) == targetLocation):
-                        print('pumasok')
                         response = {'message':'Identical Booking Exists.'}
             
             if response['message'] != 'Identical Booking Exists.':
