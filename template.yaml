@@ -399,6 +399,7 @@ Resources:
       Environment:
         Variables:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+          RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:

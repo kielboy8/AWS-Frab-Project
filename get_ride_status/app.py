@@ -14,7 +14,7 @@ client = boto3.resource(
    region_name=os.environ['DEFAULT_REGION'],
 )
 
-table = client.Table(os.environ["RIDES_TABLE"])
+ridesTbl = client.Table(os.environ["RIDES_TABLE"])
 
 r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'],
     charset='utf-8', decode_responses=True, db=0)
@@ -35,7 +35,7 @@ def lambda_handler(event, context):
             }
         else:
             #look at the dynamodb
-            result = table.query(
+            result = ridesTbl.query(
                 KeyConditionExpression=Key('ride_id').eq(rideId)
             )
             
