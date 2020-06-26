@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 import datetime 
+import redis
 
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key #, Attr
@@ -11,18 +12,24 @@ client = boto3.resource(
    region_name=os.environ['DEFAULT_REGION'],
 )
 
-sqs = boto3.client('sqs', os.environ["BOOKING_QUEUE"])
+r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
+            charset='utf-8', decode_responses=True, db=0)
+#r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], db=0)
 table = client.Table(os.environ["RIDES_TABLE"])
-table2 = client.Table(os.environ["DRIVERS_TABLE"])
-table3  = client.Table(os.environ["LOCATIONS_TABLE"])
 
 def lambda_handler(event, context):
     params = event.get("pathParameters")
     driverId = params.get('driverId')
     rideId = params.get('rideId')
     
-    body = json.loads(event['body'])
-    acceptLocation = json.loads(body['acceptLocation'])
+    #body = json.loads(event['body'])
+    body = json.loads(event.get('body'))
+    #request = json.loads(body['acceptLocation'])
+    
+    acceptLocation = {
+        'N': body['acceptLocation']['N'],
+        'W': body['acceptLocation']['W']
+    }
     
     if driverId and rideId and acceptLocation:
         dateNow = str(datetime.datetime.now().isoformat())
@@ -32,39 +39,44 @@ def lambda_handler(event, context):
             },
             ExpressionAttributeNames={
                 '#RS': 'ride_status',
-                '#AA': 'accepted_at',
-                '#AL': 'accepted_location'
+                '#DI': 'driver_id',
+                '#TS': 'timestamp'
             },
             ExpressionAttributeValues={
                 ':s': 'accepted',
-                ':aa': dateNow,
-                ':al': str(acceptLocation)
+                ':di': driverId,
+                ':ts': dateNow
             },
-            UpdateExpression="set #RS=:s, #AA=:aa, #AL=:al",
+            UpdateExpression="set #RS=:s, #DI=:di, #TS=:ts",
         )
         
-        update_driver_table=table2.update_item(
-            Key={
-                'driver_id': driverId
-            },
-            ExpressionAttributeNames={
-                '#DS': 'current_ride',
-                '#CL': 'current_location'
-            },
-            ExpressionAttributeValues={
-                ':s': rideId,
-                ':cc': str(acceptLocation),
-            },
-            UpdateExpression="set #DS=:s",
+        response = {
+            "rideId": rideId,
+            "acceptLocation": acceptLocation,
+            "createAt": dateNow
+        }
+        # print(str(r))
+        # print(r.get('ridesGeoPending'))
+        #     # r.geoadd('ridesGeoPending', 
+        #     #     float(bookingLocation['W']), 
+        #     #     float(bookingLocation['N']), 
+        #     #     body['ride_id']) #Lon, Lat        
+        
+        #r.get('ridesGeoPending')
+        
+        r.zrem('ridesGeoPending', rideId)
+        r.hset('bookings': rideId,
+            {
+                'state':'accepted', 
+                'driverId': driverId
+            }
         )
         
-        #Delete Message from Queue
-    
+        
+    # else:
+    #     response  = ("Invalid")
+        
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "rideId": rideId,
-            "acceptLocation": str(acceptLocation),
-            "rideStatus": 'Found a driver',
-        }),
+        "body": json.dumps(response),
     }
