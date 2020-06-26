@@ -325,29 +325,31 @@ Resources:
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
             ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
             ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-  # AcceptRideRequestFunction: 
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     CodeUri: accept_ride_request/
-  #     Handler: app.lambda_handler
-  #     Runtime: python3.7
-  #     Events: 
-  #       FrabApi:
-  #         Type: Api
-  #         Properties:
-  #           Path: /drivers/{driverId}/rides/{rideId}
-  #           Method: put
-  #           RestApiId: !Ref FrabApi
-  #     Environment: 
-  #       Variables:
-  #           DEFAULT_REGION: !Ref DefaultRegion
-  #           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-  #           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
-  #     Policies:
-  #       - DynamoDBCrudPolicy:
-  #           TableName: !Ref RidesTable
-  #       - DynamoDBCrudPolicy:
-  #           TableName: !Ref DriversTable
+  AcceptRideRequestFunction: 
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: accept_ride_request/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Events: 
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /drivers/{driverId}/rides/{rideId}/accept
+            Method: put
+            RestApiId: !Ref FrabApi
+      Environment: 
+        Variables:
+            DEFAULT_REGION: !Ref DefaultRegion
+            RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+            DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+            ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+            ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DriversTable
   UpdateDriversLocationFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
