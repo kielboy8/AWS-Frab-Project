@@ -51,7 +51,7 @@ def lambda_handler(event, context):
         "statusCode": 200,
         "body": json.dumps({
             "locationId": driverLocId,
-            "updatedLocation": redis_result_body
+            "updatedLocation": requestBody['updatedLocation']
             # "location": ip.text.replace("\n", "")
         }),
     }
