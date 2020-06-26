@@ -45,7 +45,7 @@ def lambda_handler(event, context):
                 }
             else:
                 result = None
-                response = { 'message': 'No driver record not found.' }
+                response = { 'message': 'Driver Location Not Found.' }
         
         if result:
             acceptable_rides = r.georadius('ridesGeoPending', 
