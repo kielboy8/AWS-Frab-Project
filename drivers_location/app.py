@@ -34,19 +34,19 @@ def lambda_handler(event, context):
         )
     
     redis_endpoint.geoadd(
-        'drivers', 
+        'driversGeo', 
         requestBody['updatedLocation']['N'], 
         requestBody['updatedLocation']['W'], 
-        driverLocId
+        driverId
     )
     
-    result = redis_endpoint.geopos('drivers', driverLocId)
+    # result = redis_endpoint.geopos('driversGeo', driverId)
     
-    redis_result_body = {
-        'N': result[0][0],
-        'W': result[0][1]
-    }
-
+    # redis_result_body = {
+    #     'N': result[0][0],
+    #     'W': result[0][1]
+    # }
+    
     return {
         "statusCode": 200,
         "body": json.dumps({
