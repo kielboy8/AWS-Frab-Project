@@ -61,7 +61,7 @@ def lambda_handler(event, context):
                 }
             )
             
-            # r.expire('bookingHash:'+body['ride_id'], os.environ['RIDES_TTL'])
+            r.expire('bookingHash:'+body['ride_id'], os.environ['RIDES_TTL'])
             
             response = {
                     "rideId": body['ride_id'],
