@@ -13,13 +13,23 @@ driversTbl = dynamodb.Table(os.environ['DRIVERS_TABLE'])
 r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
      charset='utf-8', decode_responses=True, db=0)
 
+def validate_coord(coord):
+    try:
+        if coord.get('W') and coord.get('N') and \
+        (float(coord.get('W')) > -180 and float(coord.get('W')) < 180) and \
+        (float(coord.get('N')) > -90 and float(coord.get('N')) < 90):
+            return True
+    except:
+        return False
+        
+        
 def lambda_handler(event, context):
     params = event.get('pathParameters')
     riderId = params.get('riderId')
     requestBody = json.loads(event.get('body'))
     response = { 'message': 'Invalid Input.' }
     
-    if requestBody and requestBody.get('updatedLocation'):
+    if validate_coord(requestBody['updatedLocation']):
         driverLocId = str(uuid4().hex) 
         try:
             if r.get('riderBooking:'+riderId) is None or \
