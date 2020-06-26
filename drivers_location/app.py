@@ -7,6 +7,8 @@ from uuid import uuid4
 dynamodb = boto3.resource('dynamodb')
 driversTbl = dynamodb.Table(os.environ['DRIVERS_TABLE'])
 ridesTbl = dynamodb.Table(os.environ['RIDES_TABLE'])
+ridersTbl = dynamodb.Table(os.environ['RIDERS_TABLE'])
+
 r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
      charset='utf-8', decode_responses=True, db=0)
 
@@ -15,7 +17,6 @@ def lambda_handler(event, context):
     driverId = params.get('driverId')
     requestBody = json.loads(event.get('body'))
     response = 'Invalid Input.'
-   
     driverLocId = str(uuid4().hex)
     
     if requestBody and requestBody.get('updatedLocation'):
@@ -52,8 +53,29 @@ def lambda_handler(event, context):
                     currentRide['state'] = 'in_progress'
                 elif currentRide['state'] == 'in_progress':
                     #Finish Ride
+                    r.set('driverBooking:'+driverId, '')
+                    r.set('riderBooking:'+currentRide['rider_id'], '')
                     currentRide['state'] == 'complete'
-                
+                    driversTbl.update_item(
+                        Key={
+                            'driver_id': currentRide['driver_id']
+                        },
+                        UpdateExpression="set ride_id = :r",
+                        ExpressionAttributeValues={
+                            ':r': '',
+                        },
+                    )
+                    
+                    ridersTbl.update_item(
+                        Key={
+                            'rider_id': currentRide['rider_id']
+                        },
+                        UpdateExpression="set ride_id = :r",
+                        ExpressionAttributeValues={
+                            ':r': '',
+                        },
+                    )
+                    
                 ridesTbl.update_item(
                     Key={
                         'ride_id': currentRideId
@@ -65,6 +87,7 @@ def lambda_handler(event, context):
                 )
                 
                 r.hmset('bookingHash:'+currentRideId, currentRide)
+                
                 willExpire and r.expire('bookingHash:'+currentRideId, 120)
                 
         response = {
