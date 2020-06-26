@@ -8,8 +8,17 @@ import redis
 dynamodb = boto3.client("dynamodb", os.environ['DEFAULT_REGION'])
 r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
             charset='utf-8', decode_responses=True, db=0)
-
-
+            
+def validate_coord(coord):
+    try:
+        if coord.get('W') and coord.get('N') and \
+        (float(coord.get('W')) > -180 and float(coord.get('W')) < 180) and \
+        (float(coord.get('N')) > -90 and float(coord.get('N')) < 90):
+            return True
+    except:
+        return False
+        
+        
 def lambda_handler(event, context):
     body = json.loads(event['body'])
     body['ride_id'] = uuid.uuid4().hex
@@ -19,9 +28,8 @@ def lambda_handler(event, context):
     if body.get('bookingLocation') and body.get('targetLocation'):
         bookingLocation = body['bookingLocation']
         targetLocation = body['targetLocation']
-        if (bookingLocation.get('W') and bookingLocation.get('N')) and \
-            (targetLocation.get('W') and targetLocation.get('N')):
-            currentRideId = r.get('riderBooking:'+body['userId'])
+        if validate_coord(bookingLocation) and validate_coord(targetLocation):
+            currentRideId = r.get('riderBooking:'+body['riderId'])
             if currentRideId:
                 currentRide = r.hgetall('bookingHash:'+currentRideId)
                 if currentRide and (json.loads(currentRide['bookingLocation']) == bookingLocation) and \
@@ -45,7 +53,7 @@ def lambda_handler(event, context):
                             'S': ''  
                         },
                         'rider_id': {
-                            'S': body['userId']
+                            'S': body['riderId']
                         },
                         'timestamp': {
                             'S': body['timestamp']
@@ -66,13 +74,13 @@ def lambda_handler(event, context):
                         'state':'pending', 
                         'rideId': body['ride_id'], 
                         'driverId': '',
-                        'userId': body['userId'],
+                        'riderId': body['riderId'],
                         'bookingLocation': str(json.dumps(body['bookingLocation'])),
                         'targetLocation': str(json.dumps(body['targetLocation']))
                     }
                 )
         
-                r.set('riderBooking:'+body['userId'], body['ride_id'])
+                r.set('riderBooking:'+body['riderId'], body['ride_id'])
                 
                 response = {
                         'rideId': body['ride_id'],
