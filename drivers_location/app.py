@@ -33,7 +33,7 @@ def lambda_handler(event, context):
         )
     
     r.geoadd(
-        'driversGeo', 
+        'driversRidersGeo', 
         requestBody['updatedLocation']['N'], 
         requestBody['updatedLocation']['W'], 
         driverId

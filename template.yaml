@@ -314,6 +314,7 @@ Resources:
   #     Environment:
   #       Variables:
   #         DEFAULT_REGION: !Ref DefaultRegion
+  #         SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
   #         ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
   #         ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
   #         SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
