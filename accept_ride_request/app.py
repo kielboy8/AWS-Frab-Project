@@ -55,6 +55,7 @@ def lambda_handler(event, context):
             "acceptLocation": acceptLocation,
             "createAt": dateNow
         }
+<<<<<<< HEAD
         # print(str(r))
         # print(r.get('ridesGeoPending'))
         #     # r.geoadd('ridesGeoPending', 
@@ -64,6 +65,9 @@ def lambda_handler(event, context):
         
         #r.get('ridesGeoPending')
         
+=======
+
+>>>>>>> 620245dcee079cb465e7c98bd57ae54f8ae984c0
         r.zrem('ridesGeoPending', rideId)
         r.hset('bookings': rideId,
             {

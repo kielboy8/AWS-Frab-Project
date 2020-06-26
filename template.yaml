@@ -330,7 +330,11 @@ Resources:
     Properties:
       CodeUri: accept_ride_request/
       Handler: app.lambda_handler
+<<<<<<< HEAD
       Runtime: python3.6
+=======
+      Runtime: python3.7
+>>>>>>> 620245dcee079cb465e7c98bd57ae54f8ae984c0
       Events: 
         FrabApi:
           Type: Api
