@@ -293,37 +293,37 @@ Resources:
         - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
             TableName: !Ref RidesTable
-  # DistanceDriverRiderFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     CodeUri: distance_driver_rider/
-  #     Handler: app.lambda_handler
-  #     Runtime: python3.7
-  #     VpcConfig:
-  #       SecurityGroupIds:
-  #         - !Ref FunctionSecurityGroup
-  #       SubnetIds:
-  #         - !Ref PublicSubnet1
-  #     Events:
-  #       FrabApi:
-  #         Type: Api
-  #         Properties:
-  #           Path: /drivers/{driverId}/distance
-  #           Method: put
-  #           RestApiId: !Ref FrabApi
-  #     Environment:
-  #       Variables:
-  #         DEFAULT_REGION: !Ref DefaultRegion
-  #         SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
-  #         RIDERS_TABLE: !Ref RidersTable
-  #         DRIVERS_TABLE: !Ref DriversTable
-  #         RIDES_TABLE: !Ref RidersTable
-  #         ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-  #         ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
-  #         SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
-  #         SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
-  #     Policies:
-  #       - AWSLambdaVPCAccessExecutionRole
+  DistanceDriverRiderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: distance_driver_rider/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FunctionSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnet1
+      Events:
+        FrabApi:
+          Type: Api
+          Properties:
+            Path: /drivers/{driverId}/distance
+            Method: put
+            RestApiId: !Ref FrabApi
+      Environment:
+        Variables:
+          DEFAULT_REGION: !Ref DefaultRegion
+          SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
+          RIDERS_TABLE: !Ref RidersTable
+          DRIVERS_TABLE: !Ref DriversTable
+          RIDES_TABLE: !Ref RidersTable
+          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
+          SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
   BookRideFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -404,6 +404,7 @@ Resources:
         Variables:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+          RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:
@@ -431,8 +432,9 @@ Resources:
             RestApiId: !Ref FrabApi
       Environment:
         Variables:
-          RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
+          DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+          RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:
