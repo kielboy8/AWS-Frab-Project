@@ -37,7 +37,7 @@ def lambda_handler(event, context):
         print("accept")
         rideRecord = r.hgetall('bookingHash:'+rideId)
         print("Meron rideRecord", rideRecord)
-        if rideRecord['driver_id']:
+        if rideRecord['driverId']:
             print("may driver na")
             response = {'message': 'Ride already has a driver.'}
         else:
