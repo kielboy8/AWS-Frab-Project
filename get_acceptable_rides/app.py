@@ -25,13 +25,12 @@ def lambda_handler(event, context):
     if driverId:
         #Fetch Last Location on ElastiCache
         result = r.geopos('driversGeo', driverId)
-            
-        if result is not None:
+        
+        if len(result) > 0 and result[0] is not None:
             result = {
                 'W': result[0][1],
                 'N': result[0][0]
             }
-          
         else:
             result = table.query(
                 KeyConditionExpression=Key('driver_id').eq(driverId),
@@ -44,8 +43,12 @@ def lambda_handler(event, context):
                     'W': float(result['W']),
                     'N': float(result['N'])
                 }
-            
-        acceptable_rides = r.georadius('ridesGeoPending', 
+            else:
+                result = None
+                response = { 'message': 'No driver record not found.' }
+        
+        if result:
+            acceptable_rides = r.georadius('ridesGeoPending', 
                 result['N'], result['W'],  #W, N
                 os.environ['SEARCH_RADIUS_VALUE'], 
                 unit=os.environ['SEARCH_RADIUS_UNIT'], 
@@ -55,15 +58,15 @@ def lambda_handler(event, context):
                 count=os.environ['RIDES_ACCEPTABLE_COUNT'], 
                 sort='ASC'
             )
-                  
-        response = [{
-            'ride_id': ride[0],
-            'currentLocation': {
-                'N': ride[2][1],
-                'W': ride[2][0]
-            },
-            'distance': str(ride[1]) + 'km.'
-        } for ride in acceptable_rides]
+                      
+            response = [{
+                'ride_id': ride[0],
+                'currentLocation': {
+                    'N': ride[2][1],
+                    'W': ride[2][0]
+                },
+                'distance': str(ride[1]) + 'km.'
+            } for ride in acceptable_rides]
     else:
         response = { 'message': 'No driverId Provided.' }
     
