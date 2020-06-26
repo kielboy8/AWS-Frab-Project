@@ -13,8 +13,12 @@ def lambda_handler(event, context):
     riderId = requestBody['riderId']
     
     try:
-        distance = r.geodist('driversRidersGeo', place1, place2, unit=None)
-        
+        response = { 
+            'distance': r.geodist('driversRidersGeo', riderId, driverId, unit=os.environ['SEARCH_RADIUS_UNIT']),
+            'unit': os.environ['SEARCH_RADIUS_UNIT'],
+            'driverId': driverId,
+            'riderId': riderId
+        }
     except:
         response = {'message': 'DriverId/RiderId does not exist.'}
         
