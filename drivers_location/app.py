@@ -62,8 +62,10 @@ def lambda_handler(event, context):
             currentRide = r.hgetall('bookingHash:'+currentRideId)
             willExpire = False
             #Create approx calculation for destination
+            print('isSame: ',  json.loads(currentRide['bookingLocation']) == requestBody['updatedLocation'])
+            print( json.loads(currentRide['bookingLocation']), requestBody['updatedLocation'])
             if json.loads(currentRide['bookingLocation']) == requestBody['updatedLocation']:
-                print('has same: ', json.loads(currentRide['bookingLocation']), requestBody['updatedLocation'])
+                print('SAME!')
                 if currentRide['state'] == 'accepted':
                     #Move to In-Progress
                     print('Driver picked up the Rider...')

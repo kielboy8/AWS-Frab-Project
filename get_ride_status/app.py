@@ -39,9 +39,10 @@ def lambda_handler(event, context):
                 KeyConditionExpression=Key('ride_id').eq(rideId)
             )
             
-            if result['Items'][0] and len(result['Items']) > 0:
+            if len(result['Items']) > 0:
                 datenow = dt.datetime.now()
                 item = result['Items'][0]
+                print('item: ', item)
                 timestamp_obj = dateutil.parser.isoparse(item['timestamp'])
                 if timestamp_obj + dt.timedelta(seconds=int(os.environ['RIDES_TTL'])) < datenow \
                     and item['ride_status'] == 'pending' and item['driver_id'] == '':
@@ -59,7 +60,7 @@ def lambda_handler(event, context):
                     }
                     r.hmset('bookingHash:'+item['ride_id'], item)
             else:
-                response = 'Ride Not Found.'
+                response = {'error':'Ride Not Found.'}
     else:
         response = { 'error': 'Please provide a Ride ID.' }
 
