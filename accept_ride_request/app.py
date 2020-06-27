@@ -33,17 +33,20 @@ def lambda_handler(event, context):
     response = {'message': 'Invalid Input.'}
     body = json.loads(event.get('body'))
     acceptLocation = body['acceptLocation']
-    accept_location = str(acceptLocation)
-
-    if bool(driverId and rideId and acceptLocation) and bool(acceptLocation.get('W') and acceptLocation.get('N')) :
-        rideRecord = r.hgetall('bookingHash:'+rideId)
+    
+    if driverId and rideId:
         if validate_coord(acceptLocation) == False:
             response = {'message': 'Invalid Coordinates.'}
         else:
+            # print('w1')
+            rideRecord = r.hgetall('bookingHash:'+rideId)
+            # print('x2')
             if rideRecord['driverId']:
                 response = {'message': 'Ride already has a driver.'}
             else:
+                # print('wow')
                 if r.get('driverBooking:'+driverId) == None:
+                    # print('wew')
                     dateNow = str(datetime.datetime.now().isoformat())
                     update_ride_table=rideTable.update_item(
                         Key={
@@ -56,12 +59,20 @@ def lambda_handler(event, context):
                             '#AL': 'accept_location'
                         },
                         ExpressionAttributeValues={
-                            ':s': 'accepted',
-                            ':di': driverId,
-                            ':ts': dateNow,
-                            ':al': accept_location
+                            ':s': {
+                                'S' : 'accepted'
+                            },
+                            ':di': {
+                                'S': driverId
+                            },
+                            ':ts': {
+                                'S' : dateNow
+                            },
+                            ':al': {
+                                'S': str(json.dumps(acceptLocation))
+                            } 
                         },
-                        UpdateExpression="SET #RS=:s, #DI=:di ADD #AA :ts, #AL :al",
+                        UpdateExpression="SET #AA=:ts, #AL=:al, #RS=:s, #DI=:di ",
                     )     
                     
                     update_driver_table=driverTable.update_item(
@@ -69,28 +80,30 @@ def lambda_handler(event, context):
                                 'driver_id': driverId
                             },
                         ExpressionAttributeNames={
-                            '#DS': 'driver_status',
                             '#RI': 'ride_id'
                         },
                         ExpressionAttributeValues={
-                            ':ds': 'Accepted a ride',
                             ':ri': rideId
                         },
-                        UpdateExpression="SET #DS=:ds ADD #RI :ri",
+                        UpdateExpression="SET #RI=:ri",
                     )                
-                    print("Database has been updated")
+                    # print("Database has been updated")
                     
-                    r.zrem('ridesGeoPending:', rideId)     
-                    print("Deleted rideID from ridesGeoPending")
+                    r.zrem('ridesGeoPending', rideId)     
+                    # print("Deleted rideID from ridesGeoPending")
                     r.set('driverBooking:'+driverId, rideId)
-                    print("Updated driverBooking")
+                    # print("Updated driverBooking")
                     r.hmset('bookingHash:'+rideId, {**rideRecord, 'state': 'accepted','driverId': driverId })
-                    print("Updated bookingHash")
+                    # print("Updated bookingHash")
 
                     response = {
                         "rideId": rideId,
                         "acceptLocation": body['acceptLocation'],
-                        "createAt": dateNow
+                        "createdAt": dateNow
+                    }
+                else:
+                    response = {
+                        'message': 'You have an existing ride.'
                     }
                 
     return {

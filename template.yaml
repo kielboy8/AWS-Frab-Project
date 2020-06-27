@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   frab-api
 
-  SAM Template for frab-api
+  SAM for frab-api
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -428,9 +428,13 @@ Resources:
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref DriversTable
         - AWSLambdaVPCAccessExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DriversTable     
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidersTable
   UpdateRidersLocationFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -460,6 +464,10 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RidersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DriversTable
         - AWSLambdaVPCAccessExecutionRole
   GetRiderLocationFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
