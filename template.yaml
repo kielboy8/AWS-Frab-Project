@@ -376,6 +376,11 @@ Resources:
       CodeUri: accept_ride_request/
       Handler: app.lambda_handler
       Runtime: python3.7
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FunctionSecurityGroup
+        SubnetIds:
+          - !Ref PublicSubnet1      
       Events: 
         FrabApi:
           Type: Api
@@ -391,6 +396,7 @@ Resources:
             ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
             ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
             TableName: !Ref RidesTable
         - DynamoDBCrudPolicy:
