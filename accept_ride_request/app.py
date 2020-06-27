@@ -42,12 +42,10 @@ def lambda_handler(event, context):
             if rideRecord and rideRecord['driverId']:
                 response = {'message': 'Ride already has a driver.'}
             else:
-                if r.get('driverBooking:'+driverId) == None:
+                if r.get('driverBooking:'+driverId) == None and rideRecord:
                     dateNow = str(datetime.datetime.now().isoformat())
                     update_ride_table=rideTable.update_item(
-                        Key={
-                                'ride_id': rideId
-                            },
+                        Key={ 'ride_id': rideId },
                         ExpressionAttributeNames={
                             '#RS': 'ride_status',
                             '#DI': 'driver_id',
@@ -75,24 +73,20 @@ def lambda_handler(event, context):
                         },
                         UpdateExpression="SET #RI=:ri",
                     )                
-                    # print("Database has been updated")
                     
                     r.zrem('ridesGeoPending', rideId)     
-                    # print("Deleted rideID from ridesGeoPending")
                     r.set('driverBooking:'+driverId, rideId)
-                    # print("Updated driverBooking")
                     r.hmset('bookingHash:'+rideId, {**rideRecord, 'state': 'accepted','driverId': driverId })
-                    # print("Updated bookingHash")
-
+          
                     response = {
                         "rideId": rideId,
                         "acceptLocation": body['acceptLocation'],
                         "createdAt": dateNow
                     }
+                elif r.get('driverBooking:'+driverId):
+                    response = { 'error': 'You have an existing ride.'}
                 else:
-                    response = {
-                        'message': 'You have an existing ride.'
-                    }
+                    response = { 'error': 'Ride doesn\'t exist.' }
                 
     return {
         "statusCode": 200,
