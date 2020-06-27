@@ -45,7 +45,7 @@ def lambda_handler(event, context):
                 }
             else:
                 result = None
-                response = { 'message': 'Driver Location Not Found.' }
+                response = { 'error': 'Driver Location Not Found.' }
         
         if result:
             acceptable_rides = r.georadius('ridesGeoPending', 
@@ -68,7 +68,7 @@ def lambda_handler(event, context):
                 'distance': str(ride[1]) + f" {os.environ['SEARCH_RADIUS_UNIT']}."
             } for ride in acceptable_rides]
     else:
-        response = { 'message': 'No driverId Provided.' }
+        response = { 'error': 'No driverId Provided.' }
     
     return {
         "statusCode": 200,

@@ -38,15 +38,11 @@ def lambda_handler(event, context):
         if validate_coord(acceptLocation) == False:
             response = {'message': 'Invalid Coordinates.'}
         else:
-            # print('w1')
             rideRecord = r.hgetall('bookingHash:'+rideId)
-            # print('x2')
-            if rideRecord['driverId']:
+            if rideRecord and rideRecord['driverId']:
                 response = {'message': 'Ride already has a driver.'}
             else:
-                # print('wow')
                 if r.get('driverBooking:'+driverId) == None:
-                    # print('wew')
                     dateNow = str(datetime.datetime.now().isoformat())
                     update_ride_table=rideTable.update_item(
                         Key={
@@ -59,18 +55,10 @@ def lambda_handler(event, context):
                             '#AL': 'accept_location'
                         },
                         ExpressionAttributeValues={
-                            ':s': {
-                                'S' : 'accepted'
-                            },
-                            ':di': {
-                                'S': driverId
-                            },
-                            ':ts': {
-                                'S' : dateNow
-                            },
-                            ':al': {
-                                'S': str(json.dumps(acceptLocation))
-                            } 
+                            ':s': 'accepted',
+                            ':di': driverId,
+                            ':ts': dateNow,
+                            ':al': str(json.dumps(acceptLocation))
                         },
                         UpdateExpression="SET #AA=:ts, #AL=:al, #RS=:s, #DI=:di ",
                     )     
