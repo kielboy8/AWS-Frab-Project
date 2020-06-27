@@ -8,11 +8,23 @@ Description: >
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 3
+    Timeout: 15
 Parameters:
   RedisAZMode:
     Type: String
-    Default: "single-az" #"cross-az" for Multi-AZ Setup
+    Default: "single-az" #"cross-az" for Final Prod
+  ElastiCacheClusterType:
+    Type: String
+    Default: "cache.t2.micro" #cache.m3.medium or cache.t3.medium
+  ElastiCacheNodes:
+    Type: Number
+    Default: 1 #3 for Prod
+  DistanceComparisonValue:
+    Type: Number
+    Default: 2
+  DistanceComparisonUnit:
+    Type: String
+    Default: 'm'
   VpcName:
     Type: String
     Default: "frab-api-vpc"
@@ -43,6 +55,8 @@ Parameters:
     Type: Number
     Default: 1800 #Seconds
 Resources:
+  #Private API Gateway
+  
   #
   # VPC
   #
@@ -167,8 +181,8 @@ Resources:
     Properties:
       AZMode: !Ref RedisAZMode
       Engine: "redis"
-      CacheNodeType: "cache.t2.micro"
-      NumCacheNodes: 1
+      CacheNodeType: !Ref ElastiCacheClusterType
+      NumCacheNodes: !Ref ElastiCacheNodes
       VpcSecurityGroupIds:
         - !GetAtt ECSecurityGroup.GroupId
       CacheSubnetGroupName: !Ref ECSubnetGroup
@@ -534,8 +548,12 @@ Outputs:
     Description: "ElastiCache Endpoint"
     Value: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
   DriversTable:
-    Description: "DriversTable Table Name"
-    Value: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
+    Description: "DriversTable Table Arn"
+    # Value: !Select [1, !Split ['/', !.GetAtt DriversTable.Arn]]
+    Value: !GetAtt DriversTable.Arn
   RidesTable:
-    Description: "RidesTable Table Name"
-    Value: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
+    Description: "RidesTable Table Arn"
+    Value: !GetAtt RidesTable.Arn
+  RidersTable:
+    Description: "RidersTable Table Arn"
+    Value: !GetAtt RidersTable.Arn

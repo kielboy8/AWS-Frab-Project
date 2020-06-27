@@ -3,6 +3,7 @@ import boto3
 import os
 import redis
 from uuid import uuid4
+import datetime
 
 dynamodb = boto3.resource('dynamodb')
 
@@ -28,8 +29,9 @@ def lambda_handler(event, context):
     riderId = params.get('riderId')
     requestBody = json.loads(event.get('body'))
     response = { 'message': 'Invalid Input.' }
+    lastTimeStamp =  str(datetime.datetime.now().isoformat())
     
-    if validate_coord(requestBody['updatedLocation']):
+    if validate_coord(requestBody['currentLocation']):
         driverLocId = str(uuid4().hex) 
         try:
             if r.get('riderBooking:'+riderId) is None or \
@@ -44,15 +46,21 @@ def lambda_handler(event, context):
             response = ridersTbl.put_item(
                 Item={
                     'rider_id': riderId,
-                    'location_id': driverLocId 
+                    'location_id': driverLocId ,
+                    'last_location_timestamp': lastTimeStamp
                 }
             )
         
         r.geoadd(
             'driversRidersGeo', 
-            requestBody['updatedLocation']['W'], 
-            requestBody['updatedLocation']['N'], 
+            requestBody['currentLocation']['W'], 
+            requestBody['currentLocation']['N'], 
             riderId
+        )
+        
+        r.set(
+            'ridersLastLocTimestamp:'+riderId,
+            lastTimeStamp
         )
         
         #Check if has current ride in cache
@@ -61,7 +69,7 @@ def lambda_handler(event, context):
         if currentRideId: 
             currentRide = r.hgetall('bookingHash:'+currentRideId)
             willExpire = False
-            if json.loads(currentRide['targetLocation']) == requestBody['updatedLocation']:
+            if json.loads(currentRide['targetLocation']) == requestBody['currentLocation']:
                 if currentRide['state'] == 'in_progress':
                     currentRide['state'] = 'complete_success'
                     r.set('riderBooking:'+riderId, '')
@@ -104,6 +112,7 @@ def lambda_handler(event, context):
         "statusCode": 200,
         "body": json.dumps({
             "locationId": driverLocId,
-            "updatedLocation": requestBody['updatedLocation']
+            "currentLocation": requestBody['currentLocation'],
+            "lastActive": lastTimeStamp
         }),
     }
