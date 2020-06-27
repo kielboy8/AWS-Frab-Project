@@ -35,6 +35,9 @@ def lambda_handler(event, context):
                 if currentRide and (json.loads(currentRide['bookingLocation']) == bookingLocation) and \
                     (json.loads(currentRide['targetLocation']) == targetLocation):
                         response = {'message':'You already booked for this destination.'}
+                else:
+                    response = {'message': 'New Booking.'}
+                    r.zrem('ridesGeoPending:', currentRideId)    
             
             if response['message'] != 'Identical Booking Exists.':
                 dynamodb.put_item(
@@ -51,6 +54,12 @@ def lambda_handler(event, context):
                         },
                         'driver_id': {
                             'S': ''  
+                        },
+                        'accepted_at': {
+                            'S': ''
+                        },
+                        'accept_location': {
+                            'S': ''
                         },
                         'rider_id': {
                             'S': body['riderId']

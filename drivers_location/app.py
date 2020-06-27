@@ -44,6 +44,7 @@ def lambda_handler(event, context):
                 Item={
                     'driver_id': driverId,
                     'location_id': driverLocId,
+                    'ride_id': '',
                     'last_location': timestamp
                 }
             )
@@ -61,13 +62,15 @@ def lambda_handler(event, context):
             currentRide = r.hgetall('bookingHash:'+currentRideId)
             willExpire = False
             #Create approx calculation for destination
-            
             if json.loads(currentRide['bookingLocation']) == requestBody['updatedLocation']:
+                print('has same: ', json.loads(currentRide['bookingLocation']), requestBody['updatedLocation'])
                 if currentRide['state'] == 'accepted':
                     #Move to In-Progress
+                    print('Driver picked up the Rider...')
                     currentRide['state'] = 'in_progress'
                 elif currentRide['state'] == 'in_progress':
                     #Finish Ride
+                    print('ride complete...')
                     r.set('driverBooking:'+driverId, '')
                     r.set('riderBooking:'+currentRide['rider_id'], '')
                     currentRide['state'] == 'complete'
