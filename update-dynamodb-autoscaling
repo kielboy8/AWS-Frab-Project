@@ -1,0 +1,26 @@
+#Then update the autoscaling group of the dynamodb rides, riders, drivers
+
+aws application-autoscaling put-scaling-policy \
+ --service-namespace dynamodb \
+ --resource-id arn:aws:dynamodb:ap-southeast-1:527971791012:table/frab-api-DriversTable-1C2YG7K2WL2PB \
+ --scalable-dimension "dynamodb:table:WriteCapacityUnits" \
+ --policy-name "DriversTableAutoScalingPolicy" \
+ --policy-type "TargetTrackingScaling" \
+ --target-tracking-scaling-policy-configuration file://wru-scaling-policy.json
+    
+aws application-autoscaling put-scaling-policy \
+    --service-namespace dynamodb \
+    --resource-id arn:aws:dynamodb:ap-southeast-1:527971791012:table/frab-api-RidesTable-6KDEP8IGTI2H \
+    --scalable-dimension "dynamodb:table:WriteCapacityUnits" \
+    --policy-name "RidesTableAutoScalingPolicy" \
+    --policy-type "TargetTrackingScaling" \
+    --target-tracking-scaling-policy-configuration file://wru-scaling-policy.json
+
+aws application-autoscaling put-scaling-policy \
+ --service-namespace dynamodb \
+ --resource-id arn:aws:dynamodb:ap-southeast-1:527971791012:table/frab-api-RidersTable-1QV9RH87WA9JA \
+ --scalable-dimension "dynamodb:table:WriteCapacityUnits" \
+ --policy-name "RidersTableAutoScalingPolicy" \
+ --policy-type "TargetTrackingScaling" \
+ --target-tracking-scaling-policy-configuration file://wru-scaling-policy.json
+ 

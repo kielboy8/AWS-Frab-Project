@@ -75,8 +75,10 @@ def lambda_handler(event, context):
                 willExpire and r.expire('bookingHash:'+currentRideId, 120)
                 
         response =    {
+            "riderId": riderId,
             "locationId": driverLocId,
-            "updatedLocation": requestBody['updatedLocation']
+            "currentLocation": requestBody['updatedLocation'],
+            "lastActive": 
         }
         
     return {

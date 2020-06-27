@@ -3,6 +3,8 @@ import boto3
 import os
 import redis
 from uuid import uuid4
+import datetime 
+
 
 dynamodb = boto3.resource('dynamodb')
 driversTbl = dynamodb.Table(os.environ['DRIVERS_TABLE'])
@@ -27,6 +29,7 @@ def lambda_handler(event, context):
     requestBody = json.loads(event.get('body'))
     response = 'Invalid Input.'
     driverLocId = str(uuid4().hex)
+    timestamp = str(datetime.datetime.now().isoformat())
     
     if validate_coord((requestBody['updatedLocation'])):
         try:
@@ -40,7 +43,8 @@ def lambda_handler(event, context):
             driversTbl.put_item(
                 Item={
                     'driver_id': driverId,
-                    'location_id': driverLocId 
+                    'location_id': driverLocId,
+                    'last_location': timestamp
                 }
             )
         
@@ -56,6 +60,8 @@ def lambda_handler(event, context):
         if currentRideId:
             currentRide = r.hgetall('bookingHash:'+currentRideId)
             willExpire = False
+            #Create approx calculation for destination
+            
             if json.loads(currentRide['bookingLocation']) == requestBody['updatedLocation']:
                 if currentRide['state'] == 'accepted':
                     #Move to In-Progress
@@ -101,7 +107,8 @@ def lambda_handler(event, context):
                 
         response = {
             "locationId": driverLocId,
-            "updatedLocation": requestBody['updatedLocation']
+            "updatedLocation": requestBody['updatedLocation'],
+            "createdAt": timestamp
         }
         
     return {
