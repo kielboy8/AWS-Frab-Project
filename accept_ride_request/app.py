@@ -42,7 +42,9 @@ def lambda_handler(event, context):
             if rideRecord and rideRecord['driverId']:
                 response = {'message': 'Ride already has a driver.'}
             else:
-                if r.get('driverBooking:'+driverId) == None and rideRecord:
+                currentRideId = r.get('driverBooking:'+driverId)
+                if currentRideId == None or \
+                    currentRideId == '' and rideRecord:
                     dateNow = str(datetime.datetime.now().isoformat())
                     update_ride_table=rideTable.update_item(
                         Key={ 'ride_id': rideId },
@@ -53,12 +55,12 @@ def lambda_handler(event, context):
                             '#AL': 'accept_location'
                         },
                         ExpressionAttributeValues={
-                            ':s': 'accepted',
+                            ':rs': 'accepted',
                             ':di': driverId,
-                            ':ts': dateNow,
-                            ':al': str(json.dumps(acceptLocation))
+                            ':aa': dateNow,
+                            ':al': json.dumps(acceptLocation)
                         },
-                        UpdateExpression="SET #AA=:ts, #AL=:al, #RS=:s, #DI=:di ",
+                        UpdateExpression="SET #AA= :aa, #AL= :al, #RS= :rs, #DI=:di",
                     )     
                     
                     update_driver_table=driverTable.update_item(

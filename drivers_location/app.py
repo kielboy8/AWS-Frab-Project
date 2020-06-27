@@ -45,7 +45,7 @@ def lambda_handler(event, context):
                     'driver_id': driverId,
                     'location_id': driverLocId,
                     'ride_id': '',
-                    'last_location': timestamp
+                    'last_location_timestamp': timestamp
                 }
             )
         
@@ -64,8 +64,9 @@ def lambda_handler(event, context):
             #Create approx calculation for destination
             print('isSame: ',  json.loads(currentRide['bookingLocation']) == requestBody['updatedLocation'])
             print( json.loads(currentRide['bookingLocation']), requestBody['updatedLocation'])
-            if json.loads(currentRide['bookingLocation']) == requestBody['updatedLocation']:
-                print('SAME!')
+            if (json.loads(currentRide['bookingLocation']) == requestBody['updatedLocation']) or \
+                (json.loads(currentRide['targetLocation']) == requestBody['updatedLocation']):
+                print('SAME!', currentRide)
                 if currentRide['state'] == 'accepted':
                     #Move to In-Progress
                     print('Driver picked up the Rider...')
@@ -73,14 +74,15 @@ def lambda_handler(event, context):
                 elif currentRide['state'] == 'in_progress':
                     #Finish Ride
                     print('ride complete...')
+                    currentRide['state'] = 'complete_success'
                     r.set('driverBooking:'+driverId, '')
-                    r.set('riderBooking:'+currentRide['rider_id'], '')
-                    currentRide['state'] == 'complete'
+                    r.set('riderBooking:'+currentRide['riderId'], '')
+                    
                     driversTbl.update_item(
                         Key={
-                            'driver_id': currentRide['driver_id']
+                            'driver_id': driverId
                         },
-                        UpdateExpression="set ride_id = :r",
+                        UpdateExpression="SET ride_id = :r",
                         ExpressionAttributeValues={
                             ':r': '',
                         },
@@ -88,14 +90,15 @@ def lambda_handler(event, context):
                     
                     ridersTbl.update_item(
                         Key={
-                            'rider_id': currentRide['rider_id']
+                            'rider_id': currentRide['riderId']
                         },
-                        UpdateExpression="set ride_id = :r",
+                        UpdateExpression="SET ride_id = :r",
                         ExpressionAttributeValues={
                             ':r': '',
                         },
                     )
-                    
+                
+                print('currentRide HERE!: ', currentRideId, currentRide)
                 ridesTbl.update_item(
                     Key={
                         'ride_id': currentRideId
@@ -105,8 +108,8 @@ def lambda_handler(event, context):
                         ':r': currentRide['state'],
                     },
                 )
-                
-                r.hmset('bookingHash:'+currentRideId, currentRide)
+                print('execution hrere...')
+                r.hmset('bookingHash:'+currentRideId, {**currentRide, 'state': currentRide['state'] })
                 
                 willExpire and r.expire('bookingHash:'+currentRideId, 120)
                 
