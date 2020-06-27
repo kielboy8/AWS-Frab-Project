@@ -14,10 +14,18 @@ client = boto3.resource(
 
 r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
             charset='utf-8', decode_responses=True, db=0)
-riderTable = client.Table(os.environ["RIDES_TABLE"])
+rideTable = client.Table(os.environ["RIDES_TABLE"])
 driverTable = client.Table(os.environ["DRIVERS_TABLE"])
 
-
+def validate_coord(coord):
+    try:
+        if coord.get('W') and coord.get('N') and \
+        (float(coord.get('W')) > -180 and float(coord.get('W')) < 180) and \
+        (float(coord.get('N')) > -90 and float(coord.get('N')) < 90):
+            return True
+    except:
+        return False
+        
 def lambda_handler(event, context):
     params = event.get("pathParameters")
     driverId = params.get('driverId')
@@ -25,69 +33,65 @@ def lambda_handler(event, context):
     response = {'message': 'Invalid Input.'}
     body = json.loads(event.get('body'))
     acceptLocation = body['acceptLocation']
-    
-    print('Before')
-    print("acceptLocatio: ", acceptLocation)
-    print("Type: ", str(type(acceptLocation)))
-    print(bool(driverId and rideId and acceptLocation))
-    print(bool(acceptLocation.get('W') and acceptLocation.get('N')))
-    print(driverId, rideId)
-    
-    if bool(driverId and rideId and acceptLocation) and bool(acceptLocation.get('W') and acceptLocation.get('N')):
-        print("accept")
+    accept_location = str(acceptLocation)
+
+    if bool(driverId and rideId and acceptLocation) and bool(acceptLocation.get('W') and acceptLocation.get('N')) :
         rideRecord = r.hgetall('bookingHash:'+rideId)
-        print("Meron rideRecord", rideRecord)
-        if rideRecord['driver_id']:
-            print("may driver na")
-            response = {'message': 'Ride already has a driver.'}
+        if validate_coord(acceptLocation) == False:
+            response = {'message': 'Invalid Coordinates.'}
         else:
-            print("before update")
-            if r.get('driverBooking:'+driverId) == '':
-                print("before update table")
-                update_ride_table=table.update_item(
-                    Key={
-                            'ride_id': rideId
+            if rideRecord['driverId']:
+                response = {'message': 'Ride already has a driver.'}
+            else:
+                if r.get('driverBooking:'+driverId) == None:
+                    dateNow = str(datetime.datetime.now().isoformat())
+                    update_ride_table=rideTable.update_item(
+                        Key={
+                                'ride_id': rideId
+                            },
+                        ExpressionAttributeNames={
+                            '#RS': 'ride_status',
+                            '#DI': 'driver_id',
+                            '#AA': 'accepted_at',
+                            '#AL': 'accept_location'
                         },
-                    ExpressionAttributeNames={
-                        '#RS': 'ride_status',
-                        '#DI': 'driver_id',
-                        '#AA': 'accepted_at',
-                        '#AL': 'accept_location'
-                    },
-                    ExpressionAttributeValues={
-                        ':s': 'accepted',
-                        ':di': driverId,
-                        ':ts': dateNow,
-                        ':al': body['acceptLocation']
-                    },
-                    UpdateExpression="set #RS=:s, #DI=:di, #AA=:ts, #AL=:al",
-                )     
-                
-                update_driver_table=table.update_item(
-                    Key={
-                            'driver_id': driverId
+                        ExpressionAttributeValues={
+                            ':s': 'accepted',
+                            ':di': driverId,
+                            ':ts': dateNow,
+                            ':al': accept_location
                         },
-                    ExpressionAttributeNames={
-                        '#DS': 'driver_status',
-                        '#RI': 'ride_id'
-                    },
-                    ExpressionAttributeValues={
-                        ':ds': 'accepted a ride',
-                        ':ri': rideId
-                    },
-                    UpdateExpression="set #DS=:ds, #RI=:ri",
-                )                
-            
-                r.zrem('ridesGeoPending:', rideId)                
-                r.set('driverBooking:'+driverId, rideId)
-                # bookingRec = {**rideRecord, 'state': 'accepted','driver_id': driverId }
-                r.hmset('bookingHash:'+rideId, {**rideRecord, 'state': 'accepted','driver_id': driverId })
-                
-                response = {
-                    "rideId": rideId,
-                    "acceptLocation": body['acceptLocation'],
-                    "createAt": dateNow
-                }
+                        UpdateExpression="SET #RS=:s, #DI=:di ADD #AA :ts, #AL :al",
+                    )     
+                    
+                    update_driver_table=driverTable.update_item(
+                        Key={
+                                'driver_id': driverId
+                            },
+                        ExpressionAttributeNames={
+                            '#DS': 'driver_status',
+                            '#RI': 'ride_id'
+                        },
+                        ExpressionAttributeValues={
+                            ':ds': 'Accepted a ride',
+                            ':ri': rideId
+                        },
+                        UpdateExpression="SET #DS=:ds ADD #RI :ri",
+                    )                
+                    print("Database has been updated")
+                    
+                    r.zrem('ridesGeoPending:', rideId)     
+                    print("Deleted rideID from ridesGeoPending")
+                    r.set('driverBooking:'+driverId, rideId)
+                    print("Updated driverBooking")
+                    r.hmset('bookingHash:'+rideId, {**rideRecord, 'state': 'accepted','driverId': driverId })
+                    print("Updated bookingHash")
+
+                    response = {
+                        "rideId": rideId,
+                        "acceptLocation": body['acceptLocation'],
+                        "createAt": dateNow
+                    }
                 
     return {
         "statusCode": 200,
