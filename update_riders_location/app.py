@@ -46,6 +46,7 @@ def lambda_handler(event, context):
             response = ridersTbl.put_item(
                 Item={
                     'rider_id': riderId,
+                    'ride_id': '',
                     'location_id': driverLocId ,
                     'last_location_timestamp': lastTimeStamp
                 }

@@ -39,7 +39,7 @@ def lambda_handler(event, context):
                     response = {'message': 'New Booking.'}
                     r.zrem('ridesGeoPending:', currentRideId)    
             
-            if response['message'] != 'Identical Booking Exists.':
+            if response['message'] != 'You already booked for this destination.':
                 dynamodb.put_item(
                     TableName=os.environ['RIDES_TABLE'],
                     Item={
@@ -88,7 +88,18 @@ def lambda_handler(event, context):
                         'targetLocation': str(json.dumps(body['targetLocation']))
                     }
                 )
-        
+       
+                if currentRideId is None:
+                    dynamodb.put_item(
+                        TableName=os.environ['RIDERS_TABLE'],
+                        Item={
+                            'rider_id': { 'S': body['riderId'] },
+                            'ride_id': {'S': body['ride_id'] },
+                            'location_id': { 'S': '' },
+                            'last_location_timestamp': { 'S': ''}
+                        }
+                    )
+                    
                 r.set('riderBooking:'+body['riderId'], body['ride_id'])
                 
                 response = {
