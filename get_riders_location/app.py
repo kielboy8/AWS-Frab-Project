@@ -23,64 +23,50 @@ def validate_coord(coord):
 def lambda_handler(event, context):
     params = event.get('pathParameters')
     riderId = params.get('riderId')
-    requestBody = json.loads(event.get('body'))
-    response = {'message': 'Invalid Input.'}
+    response = ''
     
-    if validate_coord(requestBody['updatedLocation']):
-        driverLocId = str(uuid4().hex)
+    if riderId:
+        riderLocId = str(uuid4().hex)
         
-        try:
-            driverLocId = ridersTbl.get_item(
-                Key={
-                    'rider_id': riderId
-                },
-                ProjectionExpression='location_id'
-            )['Item']['location_id']
-        except:
-            response = ridersTbl.put_item(
-                Item={
-                    'rider_id': riderId,
-                    'location_id': driverLocId 
-                }
-            )
+        locationRider = r.hgetall('ridersLoc:'+riderId)
         
-        r.geoadd(
-            'driversRidersGeo', 
-            requestBody['updatedLocation']['N'], 
-            requestBody['updatedLocation']['W'], 
-            riderId
-        )
-        
-        #Check if has current ride in cache
-        currentRideId = r.get('driverBooking:'+riderId)
-        
-        if currentRideId: 
-            currentRide = r.hgetall('bookingHash:'+currentRideId)
-            willExpire = False
-            if json.loads(currentRide['targetLocation']) == requestBody['updatedLocation']:
-                if currentRide['state'] == 'in_progress':
-                    currentRide['state'] = 'complete_success'
-                
-                ridesTbl.update_item(
+        if locationRider.get('location_id'):
+            location = r.geopos('driversRidersGeo', riderId)
+            print('locationRider: ',locationRider.get('location_id'))
+            response = {
+                "riderId": riderId,
+                "locationId": locationRider['location_id'],
+                "currentLocation": str(location),
+                "lastActive": locationRider.get('last_location_timestamp')
+            }
+        else:
+            try:
+                record = ridersTbl.get_item(
                     Key={
-                        'ride_id': currentRideId
+                        'rider_id': riderId
                     },
-                    UpdateExpression="set ride_status = :r",
-                    ExpressionAttributeValues={
-                        ':r': currentRide['state'],
-                    },
-                )
+                    ProjectionExpression='location_id,last_location_timestamp',
+                )['Item']
                 
-                r.hmset('bookingHash:'+currentRideId, currentRide)
-                willExpire and r.expire('bookingHash:'+currentRideId, 120)
+                r.hmset('ridersLoc:'+riderId, {
+                    'location_id': record.get('location_id'),
+                    'last_location_timestamp': record.get('last_location_timestamp')
+                })
                 
-        response =    {
-            "riderId": riderId,
-            "locationId": driverLocId,
-            "currentLocation": requestBody['updatedLocation'],
-            "lastActive": 
-        }
-        
+                location = r.geopos('driversRidersGeo', riderId)
+                print('location: ', location)
+                #Add DB Cache Miss
+                response = {
+                    "riderId": riderId,
+                    "locationId": riderLocId,
+                    "currentLocation":'',
+                    "lastActive": record.get('last_location_timestamp')
+                }
+            except:
+                response = {'error': 'Rider doesn\'t exist.'}
+    else:
+        response = {'error': 'RiderId Not Provided.'}
+            
     return {
         "statusCode": 200,
         "body": json.dumps(response),

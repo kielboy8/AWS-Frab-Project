@@ -58,9 +58,9 @@ def lambda_handler(event, context):
             riderId
         )
         
-        r.set(
-            'ridersLastLocTimestamp:'+riderId,
-            lastTimeStamp
+        r.hmset(
+            'ridersLoc:'+riderId,
+            { 'timestamp': lastTimeStamp, 'location_id': driverLocId }
         )
         
         #Check if has current ride in cache

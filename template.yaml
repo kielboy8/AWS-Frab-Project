@@ -490,12 +490,18 @@ Resources:
             RestApiId: !Ref FrabApi
       Environment:
         Variables:
+          DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
+          RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
           ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
           ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref RidersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DriversTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RidesTable
         - AWSLambdaVPCAccessExecutionRole
   RidesTable:
     Type: AWS::DynamoDB::Table
@@ -527,9 +533,13 @@ Resources:
       AttributeDefinitions: 
         - AttributeName: rider_id  
           AttributeType: S
+        - AttributeName: last_location_timestamp
+          AttributeType: S
       KeySchema: 
         - AttributeName: rider_id
           KeyType: HASH
+        - AttributeName: last_location_timestamp
+          KeyType: RANGE
       ProvisionedThroughput: 
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
