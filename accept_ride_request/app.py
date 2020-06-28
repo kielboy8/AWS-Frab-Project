@@ -43,8 +43,25 @@ def lambda_handler(event, context):
                 response = {'message': 'Ride already has a driver.'}
             else:
                 currentRideId = r.get('driverBooking:'+driverId)
-                if currentRideId == None or \
-                    currentRideId == '' and rideRecord:
+                
+                if len(rideRecord) > 0:
+                    rideRecord = rideTable.get_item(
+                        Key={
+                            'ride_id': rideId
+                        }
+                    )
+                    print('rideRecord: ', rideRecord)
+                    rideRecord = {
+                        'state': rideRecord['ride_status'], 
+                        'rideId': rideRecord['ride_id'], 
+                        'driverId': '',
+                        'riderId': rideRecord['rider_id'],
+                        'bookingLocation': rideRecord['booking_location'],
+                        'targetLocation': rideRecord['target_location']
+                    }
+                    
+                if (currentRideId == None or \
+                    currentRideId == '') and len(rideRecord) > 0:
                     dateNow = str(datetime.datetime.now().isoformat())
                     update_ride_table=rideTable.update_item(
                         Key={ 'ride_id': rideId },

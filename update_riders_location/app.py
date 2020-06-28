@@ -28,7 +28,7 @@ def lambda_handler(event, context):
     params = event.get('pathParameters')
     riderId = params.get('riderId')
     requestBody = json.loads(event.get('body'))
-    response = { 'message': 'Invalid Input.' }
+    response = {'message':'Invalid Input.'}
     lastTimeStamp =  str(datetime.datetime.now().isoformat())
     
     if validate_coord(requestBody['currentLocation']):
@@ -47,7 +47,8 @@ def lambda_handler(event, context):
                 Item={
                     'rider_id': riderId,
                     'ride_id': '',
-                    'location_id': driverLocId ,
+                    'location_id': driverLocId,
+                    'last_location': str(json.dumps(requestBody['currentLocation'])),
                     'last_location_timestamp': lastTimeStamp
                 }
             )
@@ -70,8 +71,12 @@ def lambda_handler(event, context):
         if currentRideId: 
             currentRide = r.hgetall('bookingHash:'+currentRideId)
             willExpire = False
+            print('is same: ', json.loads(currentRide['targetLocation']) == requestBody['currentLocation'])
+            print(json.loads(currentRide['targetLocation']), requestBody['currentLocation'])
             if json.loads(currentRide['targetLocation']) == requestBody['currentLocation']:
+                print('pumasok here...')
                 if currentRide['state'] == 'in_progress':
+                    print('pumasok to finish..')
                     currentRide['state'] = 'complete_success'
                     r.set('riderBooking:'+riderId, '')
                     r.set('driverBooking:'+currentRide['driver_id'], '')
@@ -90,9 +95,11 @@ def lambda_handler(event, context):
                     Key={
                         'driver_id': currentRide['driver_id']
                     },
-                    UpdateExpression="set ride_id = :r",
+                    UpdateExpression="set ride_id = :r, last_location_timestamp = :lt, last_location = :loc",
                     ExpressionAttributeValues={
                         ':r': '',
+                        ':lt': lastTimeStamp,
+                        ':loc': str(json.dumps(currentRide['targetLocation']))
                     },
                 )
                 
@@ -100,9 +107,11 @@ def lambda_handler(event, context):
                     Key={
                         'rider_id': riderId
                     },
-                    UpdateExpression="set ride_id = :r",
+                    UpdateExpression="set ride_id = :r, last_location_timestamp = :lt, last_location = :loc",
                     ExpressionAttributeValues={
                         ':r': '',
+                        ':lt': lastTimeStamp,
+                        ':loc': str(json.dumps(currentRide['targetLocation']))
                     },
                 )
                 

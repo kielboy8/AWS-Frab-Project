@@ -45,7 +45,8 @@ def lambda_handler(event, context):
                     'driver_id': driverId,
                     'location_id': driverLocId,
                     'ride_id': '',
-                    'last_location_timestamp': timestamp
+                    'last_location_timestamp': timestamp,
+                    'last_location': str(json.dumps(requestBody['updatedLocation']))
                 }
             )
         
@@ -78,7 +79,7 @@ def lambda_handler(event, context):
                         Key={
                             'driver_id': driverId
                         },
-                        UpdateExpression="SET ride_id = :r,last_location_timestamp = :lt, location_id = :loc",
+                        UpdateExpression="SET ride_id = :r,last_location_timestamp = :lt, last_location = :loc",
                         ExpressionAttributeValues={
                             ':r': '',
                             ':lt': timestamp,
@@ -90,7 +91,7 @@ def lambda_handler(event, context):
                         Key={
                             'rider_id': currentRide['riderId']
                         },
-                        UpdateExpression="SET ride_id = :r, last_location_timestamp = :lt, location_id = :loc",
+                        UpdateExpression="SET ride_id = :r, last_location_timestamp = :lt, last_location = :loc",
                         ExpressionAttributeValues={
                             ':r': '',
                             ':lt': timestamp,

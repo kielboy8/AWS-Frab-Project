@@ -41,18 +41,16 @@ def lambda_handler(event, context):
                         'N': str(location[0][1]),
                         'W': str(location[0][0])
                     },
-                    "lastActive": locationRider.get('last_location_timestamp')
+                    "lastActive": locationRider.get('timestamp')
                 }
         else:
             try:
-                print('pumasok here...')
                 record = ridersTbl.get_item(
                     Key={
                         'rider_id': riderId
                     },
                     ProjectionExpression='location_id,last_location_timestamp',
                 )
-                print('record here: ', record)
                 if record['Item']:
                     r.hmset('ridersLoc:'+riderId, {
                         'location_id': record['Item']['location_id'],
@@ -60,7 +58,6 @@ def lambda_handler(event, context):
                     })
                     
                     location = r.geopos('driversRidersGeo', riderId)
-                    print('db cache: ', location)
                     #Add DB Cache Miss
                     response = {
                         "riderId": riderId,
@@ -71,9 +68,7 @@ def lambda_handler(event, context):
                         },
                         "lastActive": record['Item'].get('last_location_timestamp')
                     }
-                    print('response here: ', response)
             except Exception as e:
-                print('err message here: ', e)
                 response = {'error': 'Rider doesn\'t exist.'}
     else:
         response = {'error': 'RiderId Not Provided.'}
