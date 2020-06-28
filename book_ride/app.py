@@ -37,7 +37,8 @@ def lambda_handler(event, context):
                         response = {'message':'You are currently booked for this destination.'}
                 else:
                     response = {'message': 'New Booking.'}
-                    r.zrem('ridesGeoPending:', currentRideId)    
+                    r.zrem('ridesGeoPending:', currentRideId) 
+                    #to add delete bookingHash here
             
             if response['message'] != 'You are currently booked for this destination.':
                 dynamodb.put_item(

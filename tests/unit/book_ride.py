@@ -12,12 +12,23 @@ def book_ride():
         
         #Book Ride
         payload = {
-            "riderID": "1",
-            "pickupPoint": "14.5521547,121.0518483",
-            "dropoffPoint": "14.5538455,121.0502196"
+          "riderId": "3B0A79F0-8E4E-4523-A335-2EB98305354F",
+          "bookingLocation": {
+            "N": "14.553902",
+            "W": "121.049565"
+          },
+          "targetLocation": {
+            "N": "14.558168",
+            "W": "121.054201"
+          }
         }
-        r = requests.post(data['api_url'] + '/rides/', json=payload)
+        #request for a book ride
+        r = requests.post(
+          data['api_url'] + '/rides/', 
+          json=payload, 
+          headers={'Authorization': 'Basic c29tZS1hcGktdG9rZW46'}
+        )
         value = json.loads(r.text)
-      
-        assert r.text != None
+        # print('value: ', value, str(type(value)))
+        assert r.text and value['state'] == 'pending'
         return value['rideId']

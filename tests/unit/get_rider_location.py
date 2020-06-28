@@ -1,0 +1,9 @@
+import json
+
+import pytest
+import requests
+
+value = None
+
+def get_rider_location():
+    pass
