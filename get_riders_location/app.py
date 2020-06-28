@@ -33,15 +33,16 @@ def lambda_handler(event, context):
         if locationRider.get('location_id'):
             location = r.geopos('driversRidersGeo', riderId)
             
-            response = {
-                "riderId": riderId,
-                "locationId": locationRider['location_id'],
-                "currentLocation": {
-                    'N': location[1],
-                    'W': location[0]
-                },
-                "lastActive": locationRider.get('last_location_timestamp')
-            }
+            if location and len(location) > 0:
+                response = {
+                    "riderId": riderId,
+                    "locationId": locationRider['location_id'],
+                    "currentLocation": {
+                        'N': location[0][1],
+                        'W': location[0][0]
+                    },
+                    "lastActive": locationRider.get('last_location_timestamp')
+                }
         else:
             try:
                 record = ridersTbl.get_item(
