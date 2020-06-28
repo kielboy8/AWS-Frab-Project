@@ -10,15 +10,15 @@ Globals:
   Function:
     Timeout: 15
 Parameters:
-  RedisAZMode:
+  MultiAZSupport:
     Type: String
-    Default: "single-az" #"cross-az" for Final Prod
+    Default: "true"    
   ElastiCacheClusterType:
     Type: String
-    Default: "cache.t2.micro" #cache.m3.medium or cache.t3.medium
+    Default: "cache.m4.medium" #cache.m4.medium or cache.t3.medium or cache.r5.large
   ElastiCacheNodes:
     Type: Number
-    Default: 1 #3 for Prod
+    Default: 2 #2 for Prod
   DistanceComparisonValue:
     Type: Number
     Default: 2
@@ -42,7 +42,7 @@ Parameters:
   PublicSubnet1CIDR:
     Description: "CIDR block for Public Subnet"
     Type: String
-    Default: "10.100.64.0/16"
+    Default: "10.100.64.0/24"
   DefaultRegion: 
     Type: String
     Default: "ap-southeast-1"
@@ -59,6 +59,17 @@ Parameters:
     Type: Number
     Default: 1800 #Seconds
 Resources:
+  PrivateLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref mainVPC
+      GroupDescription: "Allows access over 443 to a single VPC Security Group"
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
   DistanceDriverRiderFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -71,7 +82,19 @@ Resources:
         SubnetIds:
           - !Ref PrivateSubnet2
       Events:
-        FrabApi:
+        # APIRoot:
+        #   Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        #   Properties:
+        #     Path: /
+        #     Method: ANY
+        #     RestApiId: !Ref FrabPrivateApiGW
+        # API:
+        #   Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        #   Properties:
+        #     Path: /{proxy+}
+        #     Method: ANY
+        #     RestApiId: !Ref FrabPrivateApiGW
+        Api:
           Type: Api
           Properties:
             Path: /drivers/{driverId}/distance
@@ -84,8 +107,8 @@ Resources:
           RIDERS_TABLE: !Ref RidersTable
           DRIVERS_TABLE: !Ref DriversTable
           RIDES_TABLE: !Ref RidersTable
-          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          ELASTICACHE_HOST: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]
           SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
           SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
       Policies:
@@ -94,8 +117,8 @@ Resources:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       PolicyDocument: '{
-       "Version":"2012-10-17",
-       "Statement": [
+      "Version":"2012-10-17",
+      "Statement": [
         {
             "Action": "*",
             "Effect": "Allow",
@@ -104,15 +127,17 @@ Resources:
         }
       ]}'
       VpcId: !Ref mainVPC
+      SubnetIds:
+        - !Ref PublicSubnet1
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.execute-api"
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
-      RouteTableIds:
-        - !Ref PublicRouteTable
-        - !Ref PrivateRouteTable1
       SecurityGroupIds:
-        -
-          !Ref FunctionSecurityGroup
+        - !Ref PrivateLambdaSecurityGroup
+      # Tags:
+      #   -
+      #     Key: "Name"
+      #     Value: "frab-private-endpoint"
   Endpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -131,15 +156,15 @@ Resources:
         - !Ref PrivateRouteTable
       ServiceName: !Sub com.amazonaws.${AWS::Region}.dynamodb
       VpcId: !Ref mainVPC
+      # Tags:
+      #   -
+      #     Key: "Name"
+      #     Value: "frab-gateway-endpoint"
   #Private API Gateway
   FrabPrivateApiGW:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
-      MethodSettings:
-        - HttpMethod: '*'
-          ResourcePath: /
-          LoggingLevel: ERROR
       EndpointConfiguration: PRIVATE
       Variables:
         ServerlessExpressLambdaFunctionName: !Ref DistanceDriverRiderFunction
@@ -173,23 +198,22 @@ Resources:
                     statusCode: 200
                 uri: !Join [ ":", [ !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}", "function:${stageVariables.ServerlessExpressLambdaFunctionName}/invocations"] ]
                 passthroughBehavior: when_no_match
-                httpMethod: POST
+                httpMethod: GET
                 type: aws_proxy
-          /{proxy+}:
+          /drivers/{driverId}/distance:
             x-amazon-apigateway-any-method:
               produces:
-              - application/json
+                - application/json
               parameters:
-              - name: proxy
-                in: path
-                required: true
-                type: string
+                - name: driverId
+                  in: path
+                  required: true
+                  type: string
               x-amazon-apigateway-integration:
                 uri: !Join [ ":", [ !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}", "function:${stageVariables.ServerlessExpressLambdaFunctionName}/invocations"] ]
-                httpMethod: POST
+                httpMethod: PUT
                 type: aws_proxy
-        x-amazon-apigateway-binary-media-types:
-          - '*/*'
+          #   /drivers/{driverId}/distance
   #
   # VPC
   #
@@ -255,14 +279,14 @@ Resources:
         -
           Key: "Name"
           Value: "frab-api-private-routetable"
-  PrivateRouteTable1:
-    Type: "AWS::EC2::RouteTable"
-    Properties:
-      VpcId: !Ref mainVPC
-      Tags:
-        -
-          Key: "Name"
-          Value: "frab-api-private-routetable1"
+  # PrivateRouteTable1:
+  #   Type: "AWS::EC2::RouteTable"
+  #   Properties:
+  #     VpcId: !Ref mainVPC
+  #     Tags:
+  #       -
+  #         Key: "Name"
+  #         Value: "frab-api-private-routetable1"
   PublicRouteTable:
     Type: "AWS::EC2::RouteTable"
     Properties:
@@ -304,6 +328,16 @@ Resources:
       SourceDestCheck: false
       Tenancy: "default"
       KeyName: "neildaryl-keypair"
+      UserData:
+        'Fn::Base64': !Sub |
+          sudo yum install gcc -y
+          sudo yum install tcl -y
+          wget http://download.redis.io/redis-stable.tar.gz
+          tar xvzf redis-stable.tar.gz
+          cd redis-stable
+          make
+          sudo cp src/redis-server /usr/local/bin/
+          sudo cp src/redis-cli /usr/local/bin/
       NetworkInterfaces:
         - GroupSet:
             - !Ref BastionSecurityGroup
@@ -311,6 +345,10 @@ Resources:
           DeviceIndex: '0'
           DeleteOnTermination: 'true'
           SubnetId: !Ref PublicSubnet1
+      Tags:
+        -
+          Key: "Name"
+          Value: "frab-api-bastion-host"
   BastionSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
@@ -340,6 +378,11 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnet1
+  PrivateSubnet2RouteAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
   PublicSubnet1RouteAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
@@ -353,16 +396,29 @@ Resources:
   #
   # ElastiCache
   #
-  ECCluster:
-    Type: "AWS::ElastiCache::CacheCluster"
+  # ECCluster:
+  #   Type: "AWS::ElastiCache::CacheCluster"
+  #   Properties:
+  #     AZMode: !Ref RedisAZMode
+  #     Engine: "redis"
+  #     CacheNodeType: !Ref ElastiCacheClusterType
+  #     NumCacheNodes: !Ref ElastiCacheNodes
+  #     VpcSecurityGroupIds:
+  #       - !GetAtt ECSecurityGroup.GroupId
+  #     CacheSubnetGroupName: !Ref ECSubnetGroup
+  ReplicationGroup:
+    Type: 'AWS::ElastiCache::ReplicationGroup'
     Properties:
-      AZMode: !Ref RedisAZMode
-      Engine: "redis"
+      AutomaticFailoverEnabled: !Ref MultiAZSupport
+      MultiAZEnabled: !Ref MultiAZEnabled
       CacheNodeType: !Ref ElastiCacheClusterType
-      NumCacheNodes: !Ref ElastiCacheNodes
-      VpcSecurityGroupIds:
-        - !GetAtt ECSecurityGroup.GroupId
       CacheSubnetGroupName: !Ref ECSubnetGroup
+      Engine: "redis"
+      NumCacheClusters: !Ref ElastiCacheNodes #2
+      Port: 6379
+      ReplicationGroupDescription: 'frab-api replication group'
+      SecurityGroupIds:
+        - !GetAtt ECSecurityGroup.GroupId
   ECSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
@@ -385,6 +441,7 @@ Resources:
       Description: "frab-api - ElastiCache Subnet Group"
       SubnetIds:
         - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
   TokenAuthorizerFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -434,8 +491,8 @@ Resources:
         Variables:
           DEFAULT_REGION: !Ref DefaultRegion
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
-          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          ELASTICACHE_HOST: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]
           RIDES_ACCEPTABLE_COUNT: !Ref RidesAcceptableCount
           SEARCH_RADIUS_VALUE: !Ref SearchRadiusValue
           SEARCH_RADIUS_UNIT: !Ref SearchRadiusUnits
@@ -465,8 +522,8 @@ Resources:
         Variables:
           DEFAULT_REGION: !Ref DefaultRegion
           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          ELASTICACHE_HOST: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]
           RIDES_TTL: !Ref RedisRidesTTL
       Policies:
         - AWSLambdaVPCAccessExecutionRole
@@ -503,8 +560,8 @@ Resources:
             RIDES_TTL: !Ref RedisRidesTTL
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
             RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
-            ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-            ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+            ELASTICACHE_HOST: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"]
+            ELASTICACHE_PORT: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]
   AcceptRideRequestFunction: 
     Type: AWS::Serverless::Function
     Properties:
@@ -528,8 +585,8 @@ Resources:
             DEFAULT_REGION: !Ref DefaultRegion
             RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
             DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
-            ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-            ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+            ELASTICACHE_HOST: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"]
+            ELASTICACHE_PORT: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
@@ -560,8 +617,8 @@ Resources:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
           RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
-          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          ELASTICACHE_HOST: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - DynamoDBCrudPolicy:
@@ -594,8 +651,8 @@ Resources:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
           RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
-          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          ELASTICACHE_HOST: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref RidersTable
@@ -628,8 +685,8 @@ Resources:
           DRIVERS_TABLE: !Select [1, !Split ['/', !GetAtt DriversTable.Arn]]
           RIDERS_TABLE: !Select [1, !Split ['/', !GetAtt RidersTable.Arn]]
           RIDES_TABLE: !Select [1, !Split ['/', !GetAtt RidesTable.Arn]]
-          ELASTICACHE_HOST: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
-          ELASTICACHE_PORT: !GetAtt ["ECCluster", "RedisEndpoint.Port"]
+          ELASTICACHE_HOST: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"]
+          ELASTICACHE_PORT: !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref RidersTable
@@ -712,7 +769,7 @@ Outputs:
   #   Value: !GetAtt BookRideFunctionRole.Arn
   CacheEndpoint:
     Description: "ElastiCache Endpoint"
-    Value: !GetAtt ["ECCluster", "RedisEndpoint.Address"]
+    Value: !Join ["", ['redis://', !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Address"],":", !GetAtt ["ReplicationGroup", "PrimaryEndPoint.Port"]]]
   # DriversTable:
   #   Description: "DriversTable Table Arn"
   #   # Value: !Select [1, !Split ['/', !.GetAtt DriversTable.Arn]]
