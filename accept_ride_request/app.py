@@ -40,28 +40,34 @@ def lambda_handler(event, context):
         else:
             rideRecord = r.hgetall('bookingHash:'+rideId)
             if rideRecord and rideRecord['driverId']:
-                response = {'message': 'Ride already has a driver.'}
+                response = {'message': 'Ride is already done.' \
+                    if rideRecord['state'] == 'complete_success' else \
+                    'Ride already has a driver.'}
             else:
                 currentRideId = r.get('driverBooking:'+driverId)
                 
-                if len(rideRecord) > 0:
+                if len(rideRecord) == 0:
                     rideRecord = rideTable.get_item(
                         Key={
                             'ride_id': rideId
                         }
-                    )
-                    print('rideRecord: ', rideRecord)
-                    rideRecord = {
-                        'state': rideRecord['ride_status'], 
-                        'rideId': rideRecord['ride_id'], 
-                        'driverId': '',
-                        'riderId': rideRecord['rider_id'],
-                        'bookingLocation': rideRecord['booking_location'],
-                        'targetLocation': rideRecord['target_location']
-                    }
+                    ).get('Item', {})
+                   
+                    if len(rideRecord) > 0:
+                        print('not here?')
+                        rideRecord = {
+                            'state': rideRecord['Item']['ride_status'], 
+                            'rideId': rideRecord['Item']['ride_id'], 
+                            'driverId': '',
+                            'riderId': rideRecord['Item']['rider_id'],
+                            'bookingLocation': rideRecord['Item']['booking_location'],
+                            'targetLocation': rideRecord['Item']['target_location']
+                        }
                     
+                print('rideRecord: ', rideRecord)
                 if (currentRideId == None or \
-                    currentRideId == '') and len(rideRecord) > 0:
+                    currentRideId == '') and len(rideRecord) > 0 and \
+                    rideRecord['state'] == 'pending':
                     dateNow = str(datetime.datetime.now().isoformat())
                     update_ride_table=rideTable.update_item(
                         Key={ 'ride_id': rideId },
