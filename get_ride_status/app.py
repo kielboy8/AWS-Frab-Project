@@ -27,37 +27,26 @@ def lambda_handler(event, context):
     if rideId:
         #check if record exists in the cache
         rideRec = r.hgetall('bookingHash:'+rideId)
-        if rideRec:
+        if len(rideRec) > 0:
             response = {
                 'state': rideRec['state'],
                 'rideId': rideRec['rideId'], 
                 'driverId': rideRec['driverId']
             }
         else:
-            #look at the dynamodb
-            result = ridesTbl.query(
-                KeyConditionExpression=Key('ride_id').eq(rideId)
+            result = ridesTbl.get_item(
+                Key={
+                    'ride_id': rideId
+                },
             )
-            
-            if len(result['Items']) > 0:
-                datenow = dt.datetime.now()
-                item = result['Items'][0]
-                timestamp_obj = dateutil.parser.isoparse(item['timestamp'])
-                if timestamp_obj + dt.timedelta(seconds=int(os.environ['RIDES_TTL'])) < datenow \
-                    and item['ride_status'] == 'pending' and item['driver_id'] == '':
-                    response = {
-                        'rideId': rideId,
-                        'state': 'pending_failure',
-                        'driverId': item['driver_id']
-                    } # booking expired
-                else:
-                    item = result['Items'][0]
-                    response = {
-                        'rideId': item['ride_id'],
-                        'state': item['ride_status'],
-                        'driverId': item['driver_id']
-                    }
-                    r.hmset('bookingHash:'+item['ride_id'], item)
+            if len(result.get('Item', {})) > 0:
+                item = result['Item']
+                response = {
+                    'rideId': item['ride_id'],
+                    'state': item['ride_status'],
+                    'driverId': item['driver_id']
+                }
+                r.hmset('bookingHash:'+item['ride_id'], item)
             else:
                 response = {'error':'Ride Not Found.'}
     else:

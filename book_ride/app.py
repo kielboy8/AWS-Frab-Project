@@ -34,12 +34,12 @@ def lambda_handler(event, context):
                 currentRide = r.hgetall('bookingHash:'+currentRideId)
                 if currentRide and (json.loads(currentRide['bookingLocation']) == bookingLocation) and \
                     (json.loads(currentRide['targetLocation']) == targetLocation):
-                        response = {'message':'You already booked for this destination.'}
+                        response = {'message':'You are currently booked for this destination.'}
                 else:
                     response = {'message': 'New Booking.'}
                     r.zrem('ridesGeoPending:', currentRideId)    
             
-            if response['message'] != 'You already booked for this destination.':
+            if response['message'] != 'You are currently booked for this destination.':
                 dynamodb.put_item(
                     TableName=os.environ['RIDES_TABLE'],
                     Item={
@@ -103,7 +103,7 @@ def lambda_handler(event, context):
                             'ride_id': {'S': body['ride_id'] },
                             'location_id': {'S':str(uuid.uuid4().hex)},
                             'last_location_timestamp': { 'S': body['timestamp'] },
-                            'last_coord': { 'S': str(json.dumps(body['bookingLocation'])) }
+                            'last_location': { 'S': str(json.dumps(body['bookingLocation'])) }
                         }
                     )
                     
