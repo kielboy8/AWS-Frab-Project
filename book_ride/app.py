@@ -77,6 +77,12 @@ def lambda_handler(event, context):
                     float(bookingLocation['W']), 
                     float(bookingLocation['N']), 
                     body['ride_id']) #Lon, Lat
+                    
+                r.geoadd('driversRidersGeo', 
+                    float(bookingLocation['W']), 
+                    float(bookingLocation['N']), 
+                    body['riderId']
+                )
                 
                 r.hmset('bookingHash:'+body['ride_id'], 
                     {
@@ -95,8 +101,9 @@ def lambda_handler(event, context):
                         Item={
                             'rider_id': { 'S': body['riderId'] },
                             'ride_id': {'S': body['ride_id'] },
-                            'location_id': { 'S': '' },
-                            'last_location_timestamp': { 'S': ''}
+                            'location_id': {'S':str(uuid.uuid4().hex)},
+                            'last_location_timestamp': { 'S': body['timestamp'] },
+                            'last_coord': { 'S': str(json.dumps(body['bookingLocation'])) }
                         }
                     )
                     

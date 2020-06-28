@@ -118,20 +118,20 @@ Resources:
         -
           Key: "Name"
           Value: "frab-api-public-routetable"
-  # IGW:
-  #   Type: "AWS::EC2::InternetGateway"
-  #   Properties:
-  #     Tags:
-  #       -
-  #         Key: "Name"
-  #         Value: "frab-api-igw"
-  # IgwAttachment:
-  #   Type: "AWS::EC2::VPCGatewayAttachment"
-  #   DependsOn:
-  #     - "IGW"
-  #   Properties:
-  #     VpcId: !Ref mainVPC
-  #     InternetGatewayId: !Ref IGW
+  IGW:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        -
+          Key: "Name"
+          Value: "frab-api-igw"
+  IgwAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    DependsOn:
+      - "IGW"
+    Properties:
+      VpcId: !Ref mainVPC
+      InternetGatewayId: !Ref IGW
   # NatEIP:
   #   Type: "AWS::EC2::EIP"
   #   Properties:
@@ -143,38 +143,38 @@ Resources:
   #   Properties:
   #     AllocationId: !GetAtt NatEIP.AllocationId
   #     SubnetId: !Ref PublicSubnet1
-  # BastionHost:
-  #   Type: "AWS::EC2::Instance"
-  #   Properties:
-  #     ImageId: "ami-0615132a0f36d24f4"
-  #     InstanceType: "t2.micro"
-  #     SourceDestCheck: false
-  #     Tenancy: "default"
-  #     KeyName: "neildaryl-keypair"
-  #     NetworkInterfaces:
-  #       - GroupSet:
-  #           - !Ref BastionSecurityGroup
-  #         AssociatePublicIpAddress: 'true'
-  #         DeviceIndex: '0'
-  #         DeleteOnTermination: 'true'
-  #         SubnetId: !Ref PublicSubnet1
-  # BastionSecurityGroup:
-  #   Type: "AWS::EC2::SecurityGroup"
-  #   Properties:
-  #     GroupDescription: "frab-api - Bastion Security Group"
-  #     VpcId: !Ref mainVPC
-  #     SecurityGroupIngress:
-  #       -
-  #         IpProtocol: "tcp"
-  #         CidrIp: 0.0.0.0/0
-  #         FromPort: 22
-  #         ToPort: 22
+  BastionHost:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: "ami-0615132a0f36d24f4"
+      InstanceType: "t2.micro"
+      SourceDestCheck: false
+      Tenancy: "default"
+      KeyName: "neildaryl-keypair"
+      NetworkInterfaces:
+        - GroupSet:
+            - !Ref BastionSecurityGroup
+          AssociatePublicIpAddress: 'true'
+          DeviceIndex: '0'
+          DeleteOnTermination: 'true'
+          SubnetId: !Ref PublicSubnet1
+  BastionSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "frab-api - Bastion Security Group"
+      VpcId: !Ref mainVPC
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          CidrIp: 0.0.0.0/0
+          FromPort: 22
+          ToPort: 22
   PrivateRouteToNatGateway: #temp
     Type: "AWS::EC2::Route"
     Properties:
       DestinationCidrBlock: "0.0.0.0/0"
       RouteTableId: !Ref PrivateRouteTable
-      # InstanceId: !Ref BastionHost
+      InstanceId: !Ref BastionHost
       # NatGatewayId: !Ref NatGateway
   PublicRouteToIGW: #temp
     Type: "AWS::EC2::Route"

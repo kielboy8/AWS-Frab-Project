@@ -82,9 +82,11 @@ def lambda_handler(event, context):
                         Key={
                             'driver_id': driverId
                         },
-                        UpdateExpression="SET ride_id = :r",
+                        UpdateExpression="SET ride_id = :r,last_location_timestamp = :lt, location_id = :loc",
                         ExpressionAttributeValues={
                             ':r': '',
+                            ':lt': timestamp,
+                            ':loc': str(json.dumps(currentRide['targetLocation']))
                         },
                     )
                     
@@ -92,13 +94,14 @@ def lambda_handler(event, context):
                         Key={
                             'rider_id': currentRide['riderId']
                         },
-                        UpdateExpression="SET ride_id = :r",
+                        UpdateExpression="SET ride_id = :r, last_location_timestamp = :lt, location_id = :loc",
                         ExpressionAttributeValues={
                             ':r': '',
+                            ':lt': timestamp,
+                            ':loc': str(json.dumps(currentRide['targetLocation']))
                         },
                     )
                 
-                print('currentRide HERE!: ', currentRideId, currentRide)
                 ridesTbl.update_item(
                     Key={
                         'ride_id': currentRideId
@@ -108,7 +111,7 @@ def lambda_handler(event, context):
                         ':r': currentRide['state'],
                     },
                 )
-                print('execution hrere...')
+                
                 r.hmset('bookingHash:'+currentRideId, {**currentRide, 'state': currentRide['state'] })
                 
                 willExpire and r.expire('bookingHash:'+currentRideId, 120)

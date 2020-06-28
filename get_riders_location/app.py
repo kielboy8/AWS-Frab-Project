@@ -5,7 +5,7 @@ import redis
 from uuid import uuid4
 
 dynamodb = boto3.resource('dynamodb')
-ridersTbl = dynamodb.Table(os.environ['DRIVERS_TABLE'])
+ridersTbl = dynamodb.Table(os.environ['RIDERS_TABLE'])
 ridesTbl = dynamodb.Table(os.environ['RIDES_TABLE'])
 r = redis.Redis(host=os.environ['ELASTICACHE_HOST'], port=os.environ['ELASTICACHE_PORT'], 
      charset='utf-8', decode_responses=True, db=0)
@@ -32,11 +32,14 @@ def lambda_handler(event, context):
         
         if locationRider.get('location_id'):
             location = r.geopos('driversRidersGeo', riderId)
-            print('locationRider: ',locationRider.get('location_id'))
+            
             response = {
                 "riderId": riderId,
                 "locationId": locationRider['location_id'],
-                "currentLocation": str(location),
+                "currentLocation": {
+                    'N': location[1],
+                    'W': location[0]
+                },
                 "lastActive": locationRider.get('last_location_timestamp')
             }
         else:
@@ -46,22 +49,26 @@ def lambda_handler(event, context):
                         'rider_id': riderId
                     },
                     ProjectionExpression='location_id,last_location_timestamp',
-                )['Item']
+                )
                 
-                r.hmset('ridersLoc:'+riderId, {
-                    'location_id': record.get('location_id'),
-                    'last_location_timestamp': record.get('last_location_timestamp')
-                })
-                
-                location = r.geopos('driversRidersGeo', riderId)
-                print('location: ', location)
-                #Add DB Cache Miss
-                response = {
-                    "riderId": riderId,
-                    "locationId": riderLocId,
-                    "currentLocation":'',
-                    "lastActive": record.get('last_location_timestamp')
-                }
+                if record['Item']:
+                    r.hmset('ridersLoc:'+riderId, {
+                        'location_id': record['Item']['location_id'],
+                        'last_location_timestamp': record['Item']['last_location_timestamp']
+                    })
+                    
+                    location = r.geopos('driversRidersGeo', riderId)
+                    print('db cache')
+                    #Add DB Cache Miss
+                    response = {
+                        "riderId": riderId,
+                        "locationId": riderLocId,
+                        "currentLocation": {
+                            'N': location[1],
+                            'W': location[0]
+                        },
+                        "lastActive": record.get('last_location_timestamp')
+                    }
             except:
                 response = {'error': 'Rider doesn\'t exist.'}
     else:
