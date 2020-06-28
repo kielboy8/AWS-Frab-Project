@@ -32,11 +32,11 @@ def lambda_handler(event, context):
     lastTimeStamp =  str(datetime.datetime.now().isoformat())
     
     if validate_coord(requestBody['currentLocation']):
-        driverLocId = str(uuid4().hex) 
+        riderLocId = str(uuid4().hex) 
         try:
             if r.get('riderBooking:'+riderId) is None or \
                 r.get('riderBooking:'+riderId) is '':
-                driverLocId = ridersTbl.get_item(
+                riderLocId = ridersTbl.get_item(
                     Key={
                         'rider_id': riderId
                     },
@@ -47,7 +47,7 @@ def lambda_handler(event, context):
                 Item={
                     'rider_id': riderId,
                     'ride_id': '',
-                    'location_id': driverLocId,
+                    'location_id': riderLocId,
                     'last_location': str(json.dumps(requestBody['currentLocation'])),
                     'last_location_timestamp': lastTimeStamp
                 }
@@ -62,25 +62,27 @@ def lambda_handler(event, context):
         
         r.hmset(
             'ridersLoc:'+riderId,
-            { 'timestamp': lastTimeStamp, 'location_id': driverLocId }
+            { 'timestamp': lastTimeStamp, 'location_id': riderLocId }
         )
         
         #Check if has current ride in cache
-        currentRideId = r.get('driverBooking:'+riderId)
-        
+        currentRideId = r.get('riderBooking:'+riderId)
+        #add DB cache miss
+        print('in here....')
         if currentRideId: 
             currentRide = r.hgetall('bookingHash:'+currentRideId)
+            print('pumasok here...', currentRide)
             willExpire = False
             print('is same: ', json.loads(currentRide['targetLocation']) == requestBody['currentLocation'])
             print(json.loads(currentRide['targetLocation']), requestBody['currentLocation'])
             if json.loads(currentRide['targetLocation']) == requestBody['currentLocation']:
-                print('pumasok here...')
+                print('pumasok here value before...', currentRide)
                 if currentRide['state'] == 'in_progress':
                     print('pumasok to finish..')
                     currentRide['state'] = 'complete_success'
                     r.set('riderBooking:'+riderId, '')
-                    r.set('driverBooking:'+currentRide['driver_id'], '')
-                
+                    r.set('driverBooking:'+currentRide['driverId'], '')
+                    print('new value of record: ', currentRide)
                 ridesTbl.update_item(
                     Key={
                         'ride_id': currentRideId
@@ -93,7 +95,7 @@ def lambda_handler(event, context):
                 
                 driversTbl.update_item(
                     Key={
-                        'driver_id': currentRide['driver_id']
+                        'driver_id': currentRide['driverId']
                     },
                     UpdateExpression="set ride_id = :r, last_location_timestamp = :lt, last_location = :loc",
                     ExpressionAttributeValues={
@@ -115,13 +117,14 @@ def lambda_handler(event, context):
                     },
                 )
                 
-                r.hmset('bookingHash:'+currentRideId, currentRide)
+                r.hmset('bookingHash:'+currentRideId, {**currentRide, 'state': currentRide['state'] })
+                print('umabot dito')
                 willExpire and r.expire('bookingHash:'+currentRideId, 120)
         
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "locationId": driverLocId,
+            "locationId": riderLocId,
             "currentLocation": requestBody['currentLocation'],
             "lastActive": lastTimeStamp
         }),
