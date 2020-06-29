@@ -42,7 +42,7 @@ Parameters:
   PublicSubnet1CIDR:
     Description: "CIDR block for Public Subnet"
     Type: String
-    Default: "10.100.64.0/16"
+    Default: "10.100.64.0/24"
   DefaultRegion: 
     Type: String
     Default: "ap-southeast-1"
@@ -59,6 +59,17 @@ Parameters:
     Type: Number
     Default: 1800 #Seconds
 Resources:
+  PrivateLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref mainVPC
+      GroupDescription: "Allows access over 443 to a single VPC Security Group"
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref FunctionSecurityGroup
   DistanceDriverRiderFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -104,15 +115,13 @@ Resources:
         }
       ]}'
       VpcId: !Ref mainVPC
+      SubnetIds:
+        - !Ref PrivateSubnet2
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.execute-api"
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
-      RouteTableIds:
-        - !Ref PublicRouteTable
-        - !Ref PrivateRouteTable1
       SecurityGroupIds:
-        -
-          !Ref FunctionSecurityGroup
+        - !Ref PrivateLambdaSecurityGroup
   Endpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -139,7 +148,7 @@ Resources:
       MethodSettings:
         - HttpMethod: '*'
           ResourcePath: /
-          LoggingLevel: ERROR
+          # LoggingLevel: ERROR
       EndpointConfiguration: PRIVATE
       Variables:
         ServerlessExpressLambdaFunctionName: !Ref DistanceDriverRiderFunction
@@ -175,21 +184,34 @@ Resources:
                 passthroughBehavior: when_no_match
                 httpMethod: POST
                 type: aws_proxy
-          /{proxy+}:
+          /drivers/{driverId}/distance:
             x-amazon-apigateway-any-method:
               produces:
               - application/json
               parameters:
               - name: proxy
                 in: path
-                required: true
                 type: string
               x-amazon-apigateway-integration:
                 uri: !Join [ ":", [ !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}", "function:${stageVariables.ServerlessExpressLambdaFunctionName}/invocations"] ]
-                httpMethod: POST
+                httpMethod: PUT
                 type: aws_proxy
-        x-amazon-apigateway-binary-media-types:
-          - '*/*'
+          # /{proxy+}:
+          #   x-amazon-apigateway-any-method:
+          #     produces:
+          #     - application/json
+          #     parameters:
+          #     - name: proxy
+          #       in: path
+          #       required: true
+          #       type: string
+          #     x-amazon-apigateway-integration:
+          #       uri: !Join [ ":", [ !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}", "function:${}/invocations"] ]
+          #       httpMethod: POST
+          #       type: aws_proxy
+        #   /drivers/{driverId}/distance
+        # x-amazon-apigateway-binary-media-types:
+        #   - '*/*'
   #
   # VPC
   #
