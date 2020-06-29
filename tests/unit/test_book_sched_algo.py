@@ -83,9 +83,30 @@ def test_acceptable_rides():
     print('value: ',)
     assert rdict[0]['ride_id'] == value   
     
-
 @pytest.mark.run(order=5)
-def test_get_rider_location():
+def test_update_rider_location():
+    global data
+    global value
+    
+    payload = {
+      "currentLocation": {
+        "N": "14.558168",
+        "W": "121.054201"
+      }
+    }
+    
+    #Update rider location  
+    r = requests.put(
+      data['api_url'] + '/riders/3B0A79F0-8E4E-4523-A335-2EB98305354F/locations/', 
+      json=payload, 
+      headers={'Authorization': 'Basic c29tZS1hcGktdG9rZW46'}
+    )
+    respRiderLoc = json.loads(r.text)
+    print('respRiderLoc: ', respRiderLoc)
+    assert json.dumps(respRiderLoc['currentLocation']) == '{"N": "14.558168", "W": "121.054201"}'
+
+@pytest.mark.run(order=6)    
+def test_get_rider_location():  
     global data
     global value
     
@@ -96,4 +117,29 @@ def test_get_rider_location():
     resp = json.loads(r.text)
     print('resp: ', resp, str(type(resp)))
     assert json.dumps(resp['currentLocation']) == '{"N": "14.558168","W": "121.054201"}'  
+
+@pytest.mark.run(order=7)
+def test_accept_ride():
+    global data
+    global value
     
+    payload = {
+      "acceptLocation": {
+        "W": "121.052958",
+        "N": "14.549637"
+      }
+    }
+    
+    #accept ride
+    r = requests.put(
+      data['api_url'] + '/drivers/18c1305e-2a7d-4e6f-9d64-7a37cefd2bd2/rides/'+value+'/accept/', 
+      json=payload, 
+      headers={'Authorization': 'Basic c29tZS1hcGktdG9rZW46'}
+    )
+    respAccept = json.loads(r.text)
+    print('Accepted ride: ', respAccept)
+    assert respAccept['rideId'] == value and json.dumps(respAccept['acceptLocation']) == '{"W": "121.052958", "N": "14.549637"}'
+    
+
+ 
+  
