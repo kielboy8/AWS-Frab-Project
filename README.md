@@ -30,18 +30,18 @@ There is a downside to this solution. Doing this would double the cost of the in
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
-- accept_ride_request (PUT /drivers/:driverId/rides/:rideId/accept) - Accepts the ride request (driver side.)
-- book_ride (POST /rides) - Books a new ride and returns a ride ID.
-- distance_driver_rider - Computes the distance between the given :riderId and the driver. (INTERNAL)
-- drivers_location (PUT /drivers/:driverId/locations) - Accepts the current longitude and latitude of a driver.
-- get_acceptable_rides (GET /drivers/:driverId/rides/acceptable) - Returns a list of rides that the driver can accept. The list of rides is determined by our Ride Scheduling Algorithm.
-- get_ride_status (GET /rides/:rideId) - Returns the state of a ride ID.
-- get_riders_location (GET /riders/:riderId) - Returns the longitude and latitude of a rider.
-- lambda_authorizer - Authenticates if you are allowed to execute the API.
-- update_riders_location (PUT /riders/:riderId/locations) - Updates the current longitude and latitude of a rider.
-- events - Invocation events that you can use to invoke the function.
-- tests - Unit tests for the application code. 
-- template-*.yaml - Templates that defines the application's AWS resources.
+- **accept_ride_request** (`PUT /drivers/:driverId/rides/:rideId/accept`) - Accepts the ride request (driver side.)
+- **book_ride** (`POST /rides`) - Books a new ride and returns a ride ID.
+- **distance_driver_rider** (`PUT /drivers/:driverId/distance`) - Computes the distance between the given :riderId and the driver. (INTERNAL)
+- **drivers_location** (`PUT /drivers/:driverId/locations`) - Accepts the current longitude and latitude of a driver.
+- **get_acceptable_rides** (`GET /drivers/:driverId/rides/acceptable`) - Returns a list of rides that the driver can accept. The list of rides is determined by our Ride Scheduling Algorithm.
+- **get_ride_status** (`GET /rides/:rideId`) - Returns the state of a ride ID.
+- **get_riders_location** (`GET /riders/:riderId`) - Returns the longitude and latitude of a rider.
+- **lambda_authorizer** - Authenticates if you are allowed to execute the API.
+- **update_riders_location** (`PUT /riders/:riderId/locations`) - Updates the current longitude and latitude of a rider.
+- **events** - Invocation events that you can use to invoke the function.
+- **tests** - Unit tests for the application code. 
+- **template-*.yaml** - Templates that defines the application's AWS resources.
 
 The application uses several AWS resources, including Lambda functions and an API Gateway API. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
 
