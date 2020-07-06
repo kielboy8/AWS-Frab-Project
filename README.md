@@ -13,6 +13,8 @@ like medical workers, hospital staff, and support personel.
 
 This project contains the API backend endpoints of a ride-hailing app. We've made complete use of AWS services to make this application highly-available, fault-tolerant, reliable, and cost-optimized.
 
+![Architecture](revalida-archi.png)
+
 To make it possible, we've made complete use of API Gateway, AWS Lambda, and AWS DynamoDB. These are all Serverless
 services which should make our application completely fault-tolerant. To make the application perform extremely well, we've made use of AWS Elasticache Redis as our database for the locations of each user of the app. Redis has this feature called Geospatial Indexing that allows you to store location values (Latitude, Longitude) and has predefined functions for doing calculations on these location values. With this, we've achieved execution times of 30-50ms on our Lambda functions during our load testing.
 
