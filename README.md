@@ -1,13 +1,50 @@
-# frab-api
+# AWS -- frab-api
+
+## Introduction
+
+The Frab API is a side-project created primarily using AWS SAM. It deploys similar APIs that are used in Ride-Hailing
+Apps. These APIs can be like accept_ride_request, book_ride, and more. The functionality of these APIs are defined below.
+
+We've also added a Lambda Authorizer so you can only execute these APIs if you have the header token required to be
+authorized to execute the request.
+
+The project was based on the concept of developing a backend platform of a ride-hailing service dedicated for front-liners
+like medical workers, hospital staff, and support personel.
+
+This project contains the API backend endpoints of a ride-hailing app. We've made complete use of AWS services to make this application highly-available, fault-tolerant, reliable, and cost-optimized.
+
+To make it possible, we've made complete use of API Gateway, AWS Lambda, and AWS DynamoDB. These are all Serverless
+services which should make our application completely fault-tolerant. To make the application perform extremely well, we've made use of AWS Elasticache Redis as our database for the locations of each user of the app. Redis has this feature called Geospatial Indexing that allows you to store location values (Latitude, Longitude) and has predefined functions for doing calculations on these location values. With this, we've achieved execution times of 30-50ms on our Lambda functions during our load testing.
+
+We've also included a internal API endpoint (distance_driver_rider) that can only be accessed by our Lambda function in a private subnet in our VPC. To test the internal API endpoint, you will have to deploy a Bastion EC2 host in the public subnet and another EC2 host in the private subnet. You then have to SSH into the EC2 host in the private subnet and execute the API from there.
+
+Despite the use of Serverless services, it's not yet completely fault-tolerant to the Region level. The APIs are only deployed into 1 AWS region. If we were to improve it, we would deploy this app into another region.
+
+How? By making use Route 53's Weighted Routing policy, we would have a domain that would point to both of the API endpoints deployed in both regions. We would make use of DynamoDB's Global Tables to have our NoSQL databases replicated to another region to have multi-master configuration. Elasticache Redis also has this new recent feature called 'Global Datastore' that works similarly to DynamoDB's Global Tables but only deploy Read Replicas to different regions and a passive master which acts as a failover.
+
+There is a downside to this solution. Doing this would double the cost of the infrastructure. Having a Managed Redis cluster is expensive. A Multi-master DynamoDB cost would also increase as well as you're also paying for the replicated databases.
+
+## Overview
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
-- hello_world - Code for the application's Lambda function.
+- accept_ride_request (PUT /drivers/:driverId/rides/:rideId/accept) - Accepts the ride request (driver side.)
+- book_ride (POST /rides) - Books a new ride and returns a ride ID.
+- distance_driver_rider - Computes the distance between the given :riderId and the driver. (INTERNAL)
+- drivers_location (PUT /drivers/:driverId/locations) - Accepts the current longitude and latitude of a driver.
+- get_acceptable_rides (GET /drivers/:driverId/rides/acceptable) - Returns a list of rides that the driver can accept. The list of rides is determined by our Ride Scheduling Algorithm.
+- get_ride_status (GET /rides/:rideId) - Returns the state of a ride ID.
+- get_riders_location (GET /riders/:riderId) - Returns the longitude and latitude of a rider.
+- lambda_authorizer - Authenticates if you are allowed to execute the API.
+- update_riders_location (PUT /riders/:riderId/locations) - Updates the current longitude and latitude of a rider.
 - events - Invocation events that you can use to invoke the function.
 - tests - Unit tests for the application code. 
-- template.yaml - A template that defines the application's AWS resources.
+- template-*.yaml - Templates that defines the application's AWS resources.
 
 The application uses several AWS resources, including Lambda functions and an API Gateway API. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
+
+There are also other templates included depending on the environment that's needed. The main template would be the
+`template-prod.yaml` if you need to deploy all the required resources.
 
 If you prefer to use an integrated development environment (IDE) to build and test your application, you can use the AWS Toolkit.  
 The AWS Toolkit is an open source plug-in for popular IDEs that uses the SAM CLI to build and deploy serverless applications on AWS. The AWS Toolkit also adds a simplified step-through debugging experience for Lambda function code. See the following links to get started.
@@ -24,64 +61,26 @@ The Serverless Application Model Command Line Interface (SAM CLI) is an extensio
 To use the SAM CLI, you need the following tools.
 
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-* [Python 3 installed](https://www.python.org/downloads/)
+* [Python 3.6 installed](https://www.python.org/downloads/)
 * Docker - [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community)
+* AWS CLI - [Install the AWS Command Line Interface](https://aws.amazon.com/cli/)
 
-To build and deploy your application for the first time, run the following in your shell:
+To build and deploy your application for the first time, you will first need to create an S3 bucket to store your packaged
+functions:
 
 ```bash
-sam build --use-container
-sam deploy --guided
+aws s3 mb s3://<your-bucket-name>
 ```
 
-The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
+Then you need to run the following AWS SAM commands:
 
-* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
-* **AWS Region**: The AWS region you want to deploy your app to.
-* **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
-* **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modified IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
-* **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
+```bash
+sam build
+sam package --output-template-file packaged.yaml --s3-bucket <your-bucket-name>
+sam deploy --template-file packaged.yaml --capabilities CAPABILITY_IAM --stack-name <your-api-name>
+```
 
 You can find your API Gateway Endpoint URL in the output values displayed after deployment.
-
-## Use the SAM CLI to build and test locally
-
-Build your application with the `sam build --use-container` command.
-
-```bash
-frab-api$ sam build --use-container
-```
-
-The SAM CLI installs dependencies defined in `hello_world/requirements.txt`, creates a deployment package, and saves it in the `.aws-sam/build` folder.
-
-Test a single function by invoking it directly with a test event. An event is a JSON document that represents the input that the function receives from the event source. Test events are included in the `events` folder in this project.
-
-Run functions locally and invoke them with the `sam local invoke` command.
-
-```bash
-frab-api$ sam local invoke HelloWorldFunction --event events/event.json
-```
-
-The SAM CLI can also emulate your application's API. Use the `sam local start-api` to run the API locally on port 3000.
-
-```bash
-frab-api$ sam local start-api
-frab-api$ curl http://localhost:3000/
-```
-
-The SAM CLI reads the application template to determine the API's routes and the functions that they invoke. The `Events` property on each function's definition includes the route and method for each path.
-
-```yaml
-      Events:
-        HelloWorld:
-          Type: Api
-          Properties:
-            Path: /hello
-            Method: get
-```
-
-## Add a resource to your application
-The application template uses AWS Serverless Application Model (AWS SAM) to define application resources. AWS SAM is an extension of AWS CloudFormation with a simpler syntax for configuring common serverless application resources such as functions, triggers, and APIs. For resources not included in [the SAM specification](https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md), you can use standard [AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html) resource types.
 
 ## Fetch, tail, and filter Lambda function logs
 
@@ -94,15 +93,6 @@ frab-api$ sam logs -n HelloWorldFunction --stack-name frab-api --tail
 ```
 
 You can find more information and examples about filtering Lambda function logs in the [SAM CLI Documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-logging.html).
-
-## Unit tests
-
-Tests are defined in the `tests` folder in this project. Use PIP to install the [pytest](https://docs.pytest.org/en/latest/) and run unit tests.
-
-```bash
-frab-api$ pip install pytest pytest-mock --user
-frab-api$ python -m pytest tests/ -v
-```
 
 ## Cleanup
 
