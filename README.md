@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Frab API is a side-project created primarily using AWS SAM. It deploys similar APIs that are used in Ride-Hailing
+The Frab API is a side-project (as part of a revalida with groupmates) created primarily using AWS SAM. It deploys similar APIs that are used in Ride-Hailing
 Apps. These APIs can be like accept_ride_request, book_ride, and more. The functionality of these APIs are defined below.
 
 We've also added a Lambda Authorizer so you can only execute these APIs if you have the header token required to be
